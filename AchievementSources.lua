@@ -9,17 +9,27 @@
 -- and nothing else. Confirmed live on 2026-08-19: dumping all 21 tooltip lines
 -- for item 21392 returned name, item level, binding, damage, stats, set
 -- membership and a class restriction - and no source of any kind. sourceType
--- 7 is all the API can say, and a collector cannot act on that alone.
+-- 5 (Achievement - confirmed 2026-08-31 against the real TRANSMOG_SOURCE_n
+-- globals; an earlier assumption of 7 was wrong, see AppearanceData.lua) is
+-- all the API can say, and a collector cannot act on that alone.
 --
 -- Every ID below was read out of a real Wowhead URL and confirmed by a second
 -- independent read. Anything that could not be verified was omitted rather
 -- than guessed - see the COULD NOT VERIFY blocks in the research files.
 --
--- SCOPE: Midnight, The War Within and Dragonflight.
--- COVERAGE: 20 entries.
---   Midnight         4 entries
---   The War Within   9 entries
---   Dragonflight     7 entries
+-- SCOPE: Midnight, The War Within, Dragonflight, Wrath of the Lich King,
+-- Legion, Battle for Azeroth and Shadowlands. Classic, The Burning Crusade,
+-- Cataclysm, Mists of Pandaria and Warlords of Draenor were checked and
+-- confirmed to have no achievement-granted transmog at all (achievements as
+-- a system didn't exist before Wrath).
+-- COVERAGE: 32 entries.
+--   Midnight               4 entries
+--   The War Within         9 entries
+--   Dragonflight           7 entries
+--   Wrath of the Lich King 6 entries
+--   Legion                 1 entry
+--   Battle for Azeroth     1 entry
+--   Shadowlands            4 entries
 local addonName, addonTable = ...
 
 addonTable.AchievementSources = {
@@ -179,5 +189,105 @@ addonTable.AchievementSources = {
         name = "Halfhill Farmer's Backpack",
         achievementID = 19873,
         achievement = "Valley of the Four Winds",
+    },
+
+    ------------------------------------------------------------------
+    -- WRATH OF THE LICH KING
+    -- from armoire_research/wrath_achievements.lua
+    ------------------------------------------------------------------
+
+    -- source: https://www.wowhead.com/achievement=1021   ("Twenty-Five Tabards")
+    [40643] = {
+        name = "Tabard of the Achiever",
+        achievementID = 1021,
+        achievement = "Twenty-Five Tabards",
+    },
+
+    -- source: https://www.wowhead.com/achievement=7520   ("The Loremaster")
+    [43300] = {
+        name = "Loremaster's Colors",
+        achievementID = 7520,
+        achievement = "The Loremaster",
+    },
+
+    -- source: https://www.wowhead.com/achievement=45   ("Northrend Explorer")
+    [43348] = {
+        name = "Tabard of the Explorer",
+        achievementID = 45,
+        achievement = "Northrend Explorer",
+    },
+
+    -- source: https://www.wowhead.com/achievement=876   ("Brutally Dedicated")
+    [43349] = {
+        name = "Tabard of Brute Force",
+        achievementID = 876,
+        achievement = "Brutally Dedicated",
+    },
+
+    -- source: https://www.wowhead.com/achievement=3857   ("Master of Isle of Conquest")
+    -- Two itemIDs share this one achievement - 49052 is the Alliance-side
+    -- reward, 49054 the Horde-side reward.
+    [49052] = {
+        name = "Tabard of Conquest",
+        achievementID = 3857,
+        achievement = "Master of Isle of Conquest",
+    },
+    [49054] = {
+        name = "Tabard of Conquest",
+        achievementID = 3857,
+        achievement = "Master of Isle of Conquest",
+    },
+
+    ------------------------------------------------------------------
+    -- LEGION
+    -- from armoire_research/legion_achievements.lua
+    ------------------------------------------------------------------
+
+    -- source: https://www.wowhead.com/achievement=12290   ("Family Brawler")
+    [156666] = {
+        name = "Master Trainer's Tabard",
+        achievementID = 12290,
+        achievement = "Family Brawler",
+    },
+
+    ------------------------------------------------------------------
+    -- BATTLE FOR AZEROTH
+    -- from armoire_research/bfa_achievements.lua
+    ------------------------------------------------------------------
+
+    -- source: https://www.wowhead.com/achievement=12863   ("Dueling Master")
+    [163055] = {
+        name = "Dueler's Tabard",
+        achievementID = 12863,
+        achievement = "Dueling Master",
+    },
+
+    ------------------------------------------------------------------
+    -- SHADOWLANDS
+    -- from armoire_research/shadowlands_achievements.lua
+    ------------------------------------------------------------------
+
+    -- source: https://www.wowhead.com/achievement=15392   ("Dune Dominance")
+    -- All four share this one achievement, which unlocks the whole "Arsenal:
+    -- Weapons of Glorious Dominion" weapon-look set at once.
+    [190110] = {
+        name = "Flail of Balletic Carnage",
+        achievementID = 15392,
+        achievement = "Dune Dominance",
+    },
+    [190111] = {
+        name = "Escutcheon of Beautiful Death",
+        achievementID = 15392,
+        achievement = "Dune Dominance",
+    },
+    [190112] = {
+        name = "Glimmering War Beacon",
+        achievementID = 15392,
+        achievement = "Dune Dominance",
+    },
+    [190462] = {
+        name = "Impaler's Graceful Lance",
+        achievementID = 15392,
+        achievement = "Dune Dominance",
     },
 }
