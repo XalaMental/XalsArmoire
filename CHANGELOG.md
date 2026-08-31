@@ -1,5 +1,23 @@
 # Xal's Armoire - Changelog
 
+## 1.2.0 - August 31, 2026
+
+---
+
+Not long after 1.0.0 went out, I noticed something felt a little off - a bunch of achievements just weren't showing up the way they should, and digging into it, I found a numbering mix-up under the hood that was the real culprit. So this update's mostly about setting that right, along with a few extra additions I folded in while I was in there. I think I've got most of the achievements covered now, all the way from the Dragon Isles up through Midnight.
+
+I'm only human, though, so I'm sure I've missed one or two along the way - if you spot a gap, I'd genuinely appreciate you letting me know.
+
+Thanks for being part of the Xal family.
+
+### 🔧 Fixed
+- Profession-crafted appearances, and appearances your current character can't personally wear or wield, were both being wrongly left off the to-do list - hiding a large share of what you actually still needed, especially for dungeon and raid gear.
+- The "where does this come from" popup wasn't showing achievement or profession sources correctly.
+
+### 🆕 New
+- Achievement research now covers Wrath of the Lich King, Legion, Battle for Azeroth and Shadowlands, on top of Midnight, The War Within and Dragonflight.
+- Bigger, easier-to-click tabs and filter buttons on the tracker and collection windows.
+
 ## 1.0.0 - August 20, 2026
 
 ---
