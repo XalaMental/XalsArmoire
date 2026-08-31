@@ -76,9 +76,18 @@ Data.pendingByItem = {}
 Data.skipped = {}
 
 -- ── Source labels ────────────────────────────────────────────
--- Enum.TransmogSource: 0 None, 1 JournalEncounter, 2 Quest, 3 Vendor,
--- 4 WorldDrop, 5 HiddenUntilCollected, 6 CantCollect, 7 Achievement,
--- 8 Profession, 9 NotValidForTransmog, 10 TradingPost.
+-- Enum.TransmogSource's real numbering is NOT publicly documented and the
+-- values below were originally guessed from an assumed ordering (0 None,
+-- 1 JournalEncounter, 2 Quest, 3 Vendor, 4 WorldDrop, 5 HiddenUntilCollected,
+-- 6 CantCollect, 7 Achievement, 8 Profession, 9 NotValidForTransmog,
+-- 10 TradingPost). That guess was WRONG for 5 and up - confirmed live
+-- 2026-08-31 by printing every real TRANSMOG_SOURCE_<n> global directly:
+-- actual numbering is 1 Boss Drop, 2 Quest, 3 Vendor, 4 World Drop,
+-- 5 Achievement, 6 Profession, 7 Trading Post. Nothing else (Hidden Until
+-- Collected / CantCollect / NotValidForTransmog) returned a global in 0-15,
+-- so those three are left as unverified best-effort guesses below - fine
+-- since SourceLabel() below only reaches this table when the real client
+-- global is missing.
 --
 -- The client carries localised label text in TRANSMOG_SOURCE_<n> globals.
 -- Read those first so the addon speaks the player's own language, and fall
@@ -86,21 +95,22 @@ Data.skipped = {}
 -- for the pet-journal source labels elsewhere in the suite. A renamed or
 -- removed global degrades to something readable instead of erroring.
 local FALLBACK_SOURCE = {
-    [0]  = "Unknown",
-    [1]  = "Dungeon or Raid",
-    [2]  = "Quest",
-    [3]  = "Vendor",
-    [4]  = "World Drop",
-    [5]  = "Hidden Until Collected",
-    [6]  = "Uncollectable",
-    [7]  = "Achievement",
-    [8]  = "Profession",
-    [9]  = "Not Valid For Transmog",
-    [10] = "Trading Post",
+    [0] = "Unknown",
+    [1] = "Dungeon or Raid",
+    [2] = "Quest",
+    [3] = "Vendor",
+    [4] = "World Drop",
+    [5] = "Achievement",
+    [6] = "Profession",
+    [7] = "Trading Post",
+    -- Unverified guesses - real numbers unknown, never seen a nonzero count:
+    [11] = "Hidden Until Collected",
+    [12] = "Uncollectable",
+    [13] = "Not Valid For Transmog",
 }
 
 -- Order groups appear in the tracker. Anything not listed sorts to the end.
-local SOURCE_ORDER = { 1, 2, 3, 7, 8, 10, 4, 5, 0, 6, 9 }
+local SOURCE_ORDER = { 1, 2, 3, 5, 6, 7, 4, 0, 11, 12, 13 }
 local SOURCE_RANK = {}
 for i = 1, #SOURCE_ORDER do SOURCE_RANK[SOURCE_ORDER[i]] = i end
 
@@ -1007,10 +1017,9 @@ end
 
 -- Things nobody can collect, which have no business on a to-do list.
 --
--- Blizzard flags two source types outright: CantCollect (6) and
--- NotValidForTransmog (9). The third case is source type 0, "no recorded
--- source" - that bucket is largely developer and test assets that happen to
--- carry an appearance. Real examples seen live: "(Action Figure) Tauren Hunter
+-- The only source type actually excluded here is 0, "no recorded source" -
+-- that bucket is largely developer and test assets that happen to carry an
+-- appearance. Real examples seen live: "(Action Figure) Tauren Hunter
 -- Polearm", whose own Wowhead page says "This item is not available to
 -- players", plus "QA Combat Test Shield 1", "Fallback Armor - Plate Hand" and
 -- "7.0 PH Shield". The research pass confirmed these have no source anywhere,
@@ -1018,6 +1027,15 @@ end
 --
 -- Deliberately NOT filtered by name. Matching on "QA" or "Test" would be
 -- guesswork and would break in another language.
+--
+-- Used to also exclude sourceType 6 and 9, on the assumption those were
+-- Blizzard's CantCollect/NotValidForTransmog. Confirmed live 2026-08-31 that
+-- assumption was simply wrong - 6 is really Profession, so every
+-- profession-crafted appearance in the game (1,749 of them, account-wide)
+-- was being silently excluded from the to-do list. Removed; the real
+-- CantCollect/NotValidForTransmog numbers aren't known, but nothing this
+-- account has ever produced a nonzero count for them, so there's nothing to
+-- filter until a real example turns up.
 --
 -- Deliberately does NOT look at entry.canCollect (Blizzard's playerCanCollect).
 -- That flag is about THIS character - wrong armor proficiency or weapon type
@@ -1029,7 +1047,6 @@ end
 -- every other class's dungeon and raid drops from the to-do list entirely.
 function Data:IsUnobtainable(entry)
     local st = entry.sourceType
-    if st == 6 or st == 9 then return true end
     if st == 0 or st == nil then return true end
     return false
 end
@@ -1278,12 +1295,14 @@ function Data:DumpSources()
         local counts, missing = {}, 0
         local covered = {}
 
-        -- Which researched table backs which source type.
+        -- Which researched table backs which source type. Achievement(5) and
+        -- Profession(6) corrected 2026-08-31 - see the note on FALLBACK_SOURCE
+        -- above, they were wrongly 7 and 8.
         local TABLES = {
             [2] = addonTable.QuestSources,
             [3] = addonTable.VendorSources,
-            [7] = addonTable.AchievementSources,
-            [8] = addonTable.ProfessionSources,
+            [5] = addonTable.AchievementSources,
+            [6] = addonTable.ProfessionSources,
         }
 
         for i = 1, #self.categories do
@@ -1318,7 +1337,7 @@ function Data:DumpSources()
         -- reaches. This is the number that says whether another research pass
         -- is worth running.
         local anyCovered = false
-        for _, st in ipairs({ 2, 3, 8, 7 }) do
+        for _, st in ipairs({ 2, 3, 6, 5 }) do
             if counts[st] and counts[st] > 0 then
                 if not anyCovered then
                     print(ACCENT .. "  Written up so far:" .. RESET)
@@ -1335,6 +1354,7 @@ function Data:DumpSources()
             print("    " .. GREY ..
                 "Midnight, The War Within and Dragonflight are researched." .. RESET)
         end
+
     end
 
     if self.resolvedAll then
