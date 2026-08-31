@@ -1,0 +1,34 @@
+## Interface: 120100, 120007
+## Title: Xal's Armoire
+## Version: @project-version@
+## Notes: A transmog tracker that shows every unique appearance you're missing and where it comes from.
+## Author: XalaMental
+## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1659137
+## SavedVariables: XalsArmoireDB
+## SavedVariablesPerCharacter: XalsArmoireCharDB
+## IconTexture: Interface\AddOns\XalsArmoire\Icon.png
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler\CallbackHandler-1.0.lua
+libs\LibDataBroker\LibDataBroker-1.1.lua
+libs\LibDBIcon\LibDBIcon-1.0.lua
+
+Bootstrap.lua
+BrandStyle.lua
+QuestSources.lua
+VendorSources.lua
+ProfessionSources.lua
+AchievementSources.lua
+InstanceDropSources.lua
+WorldDropSources.lua
+SharedLooks.lua
+AppearanceData.lua
+WhatsNew.lua
+Engine.lua
+MainTracker.lua
+AppearanceDetail.lua
+CollectionWindow.lua
+SettingsPanel.lua
+MinimapButton.lua
+ChatCommands.lua
