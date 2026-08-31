@@ -273,8 +273,10 @@ function Detail:Show(entry)
                 -- time-limited vendor is ever confirmed.
             end
 
-        -- Profession.
-        elseif st == 8 then
+        -- Profession. Was wrongly checking 8 - confirmed live 2026-08-31 the
+        -- real Profession sourceType is 6 (see the note on FALLBACK_SOURCE in
+        -- AppearanceData.lua). This branch never matched anything before.
+        elseif st == 6 then
             researchable = true
             local p = itemID and addonTable.ProfessionSources
                 and addonTable.ProfessionSources[itemID]
@@ -291,8 +293,11 @@ function Detail:Show(entry)
                 Add(line)
             end
 
-        -- Achievement.
-        elseif st == 7 then
+        -- Achievement. Was wrongly checking 7, which is real Trading Post -
+        -- confirmed live 2026-08-31 the real Achievement sourceType is 5.
+        -- This branch used to silently mark Trading Post items "researchable"
+        -- and never match a real achievement item at all.
+        elseif st == 5 then
             researchable = true
             local a = itemID and addonTable.AchievementSources
                 and addonTable.AchievementSources[itemID]
