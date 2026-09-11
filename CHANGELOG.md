@@ -1,5 +1,19 @@
 # Xal's Armoire - Changelog
 
+## 1.3.0 - September 11, 2026
+
+---
+
+I've been wanting to bring all my addons under one shared look for a while now, and this is Armoire's turn to catch up. It's mostly a visual refresh - a new dark indigo background and a deep orange accent, replacing the old near-black and bronze-gold - plus a small button-sizing bug I caught along the way. I've been under the weather for a few weeks, so this one took longer to land than I'd have liked, but it's here now.
+
+Thanks for being part of the Xal family.
+
+### 🎨 Changed
+- New look: dark indigo background and a deep orange accent, replacing the old near-black and bronze-gold.
+
+### 🔧 Fixed
+- Some buttons could end up crammed with zero gap between them (visible on the Raids/Dungeons tabs) due to a width measurement taken before the window had ever been shown.
+
 ## 1.2.0 - August 31, 2026
 
 ---
