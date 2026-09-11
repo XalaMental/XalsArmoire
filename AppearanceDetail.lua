@@ -54,7 +54,6 @@ local function BuildFrame()
     end
 
     Brand.ApplyBackground(f)
-    Brand.ApplyBackgroundImage(f)
     Brand.DrawBorder(f)
 
     local icon = f:CreateTexture(nil, "ARTWORK")
