@@ -435,7 +435,6 @@ local function BuildWindow()
     end
 
     Brand.ApplyBackground(f)
-    Brand.ApplyBackgroundImage(f)
     Brand.DrawBorder(f)
 
     Brand.Title(f, "Appearances to Collect", 22, "TOP", f, "TOP", 0, -Brand.SAFE_MARGIN - 4)
@@ -712,6 +711,14 @@ local function BuildWindow()
         local w = scrollFrame:GetWidth()
         if w and w > 0 then scrollChild:SetWidth(w) end
         scrollFrame:SetVerticalScroll(0)
+        -- Same reason as the scroll child above: the tab buttons and the
+        -- bottom links measured their own width once at creation, before the
+        -- window had ever been on screen - re-measuring here is what was
+        -- missing, and why "Raids"/"Dungeons" could end up with zero gap
+        -- between them.
+        for _, btn in pairs(tabButtons) do btn:Remeasure() end
+        collection:Remeasure()
+        close:Remeasure()
         Tracker:Refresh()
     end)
 
