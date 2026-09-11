@@ -20,9 +20,9 @@ addonTable.BrandStyle = {}
 local Brand = addonTable.BrandStyle
 
 -- ── Colours (r, g, b) ─────────────────────────────────────────
-Brand.ACCENT = { 0.72, 0.55, 0.22 }   -- warm bronze-gold
+Brand.ACCENT = { 0.72, 0.30, 0.0 }    -- deep, dark, burnt orange (was warm bronze-gold, 2026-09-02 rebrand)
 Brand.GOLD   = { 0.60, 0.47, 0.30 }   -- secondary/body text tone
-Brand.BG     = { 0.035, 0.035, 0.035, 1 } -- near-black, fully opaque
+Brand.BG     = { 0.03, 0.028, 0.06, 1 } -- dark indigo leaning purple, #08070f (was near-black, 2026-09-02 rebrand)
 Brand.LINE_THICKNESS = 2 -- minimum for ANY border/divider - never go below this
 -- Minimum gap between a panel's true outer edge and the nearest button/text
 -- (close buttons especially). DrawBorder()'s line occupies out to 8px in
@@ -95,12 +95,10 @@ end
 -- Call btn:SetSelected(true/false) for a brighter fill + white label (tabs).
 local BTN_BORDER = { Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 1 }
 local BTN_BORDER_SELECTED = { Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 1 }
--- Unselected label color - a warm amber-orange (matched from a reference
--- screenshot of WoW's own "World Quests" header text, 2026-08-09). Not the
--- same as Brand.GOLD (that's the muted secondary body-text tone used
--- elsewhere) - this is deliberately more vivid/orange so an inactive
--- button label still pops against the dark fill.
-local BTN_LABEL_UNSELECTED = { 0.95, 0.60, 0.10 }
+-- Unselected label color - same as Brand.ACCENT now (2026-09-02 rebrand),
+-- matching the standard set on Routes/Quest Compass/AutoMac/Reins rather
+-- than its own separate amber.
+local BTN_LABEL_UNSELECTED = Brand.ACCENT
 
 function Brand.MakeButton(parent, text, w, h, onClick)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -411,15 +409,25 @@ function Brand.MakeTextLink(parent, text, onClick, fontSize)
     if fontSize then
         label = Brand.FS(btn, text, Brand.BODY_FONT_PATH, fontSize, nil,
             Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
-        label:SetPoint("CENTER")
     else
         label = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        label:SetPoint("CENTER")
         label:SetText(text)
         label:SetTextColor(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 1)
     end
+    label:SetPoint("CENTER")
     btn.label = label
     btn:SetWidth(math.max(40, label:GetStringWidth() + 8))
+    -- That GetStringWidth() call isn't reliable the instant the FontString is
+    -- created, before the frame has ever actually been shown/laid out - same
+    -- issue this file already solved for the scroll child's width. A
+    -- per-button OnShow hook here doesn't fire reliably (this button is
+    -- never individually Hidden/Shown, only its parent window is) - exposed
+    -- as Remeasure() instead, called from the window's own OnShow alongside
+    -- the scroll child fix. This is why two tab buttons in a row could end
+    -- up with zero gap between them, text overlapping.
+    function btn:Remeasure()
+        self:SetWidth(math.max(40, label:GetStringWidth() + 8))
+    end
 
     btn:SetScript("OnEnter", function() label:SetTextColor(1, 1, 1, 1) end)
     btn:SetScript("OnLeave", function()
@@ -458,7 +466,6 @@ function Brand.ShowCopyBox(caption, url)
         tinsert(UISpecialFrames, "XalsArmoireCopyBox")
 
         Brand.ApplyBackground(f)
-        if Brand.ApplyBackgroundImage then Brand.ApplyBackgroundImage(f) end
         Brand.DrawBorder(f)
 
         f.caption = Brand.FS(f, "", Brand.TITLE_FONT_PATH, 15, nil,
