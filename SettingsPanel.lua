@@ -107,7 +107,6 @@ local function BuildWindow()
     end
 
     Brand.ApplyBackground(f)
-    Brand.ApplyBackgroundImage(f)
     Brand.DrawBorder(f)
 
     Brand.Title(f, "Xal's Armoire", 24, "TOP", f, "TOP", 0, -Brand.SAFE_MARGIN - 6)
