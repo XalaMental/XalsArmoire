@@ -203,7 +203,6 @@ local function BuildWindow()
     end
 
     Brand.ApplyBackground(f)
-    Brand.ApplyBackgroundImage(f)
     Brand.DrawBorder(f)
 
     Brand.Title(f, "My Collection", 22, "TOP", f, "TOP", 0, -Brand.SAFE_MARGIN - 4)
@@ -369,6 +368,15 @@ local function BuildWindow()
 
     local close = Brand.MakeCloseButton(f, function() f:Hide() end)
     close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -Brand.SAFE_MARGIN - 4, Brand.SAFE_MARGIN)
+
+    -- Same reason as MainTracker.lua's tab buttons: a text-link button
+    -- measures its own width once at creation, before the window has ever
+    -- been on screen - re-measuring here is what stops the slot link and
+    -- Close from ending up with the wrong width.
+    f:SetScript("OnShow", function()
+        slotLink:Remeasure()
+        close:Remeasure()
+    end)
 
     f:Hide()
     frame = f
