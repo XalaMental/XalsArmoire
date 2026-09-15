@@ -8,6 +8,7 @@ addonTable.AppearanceData   = {}
 addonTable.WhatsNew         = {}
 addonTable.Engine           = {}
 addonTable.MainTracker      = {}
+addonTable.ZoneAlertIcon    = {}
 addonTable.AppearanceDetail = {}
 addonTable.CollectionWindow = {}
 addonTable.SettingsPanel    = {}
