@@ -31,6 +31,12 @@ function Engine:Init()
     Data:Build()
 
     addonTable.WhatsNew:CheckAndShow()
+
+    -- The zone alert icon needs every entry resolved (entry.place, for the
+    -- zone match) to work at all, and nothing else guarantees that happens
+    -- if the player never opens the tracker window this session - kick it
+    -- off here so the icon can actually appear on its own.
+    addonTable.ZoneAlertIcon:Init()
 end
 
 frame:RegisterEvent("PLAYER_LOGIN")
