@@ -30,6 +30,8 @@ local function ShowHelp()
         "- per-slot counts, to check what the game actually reports" .. RESET)
     print("  " .. WHITE .. "/xao why <name>" .. RESET .. " " .. GREY ..
         "- dump everything the client knows about one appearance" .. RESET)
+    print("  " .. WHITE .. "/xao zone" .. RESET .. " " .. GREY ..
+        "- check why the floating zone icon is or isn't showing" .. RESET)
     print("  " .. WHITE .. "/xao options" .. RESET .. " " .. GREY ..
         "- open the settings window" .. RESET)
     print("  " .. WHITE .. "/xao help" .. RESET .. " " .. GREY ..
@@ -244,6 +246,48 @@ local function Debug()
     end
 end
 
+-- Diagnostic for the zone alert icon specifically - since it decides to show
+-- or hide itself with no visible feedback otherwise, "nothing appeared" could
+-- mean the icon is broken, or could just mean this zone genuinely has
+-- nothing. This traces the exact same path Alert:UpdateVisibility() uses.
+local function ZoneDebug()
+    local Alert = addonTable.ZoneAlertIcon
+    Say("zone icon diagnostic:")
+    print("  resolvedAll:  " .. WHITE .. tostring(Data.resolvedAll) .. RESET ..
+        "   resolvingAll: " .. WHITE .. tostring(Data.resolvingAll) .. RESET)
+
+    local zoneNames = Data:CurrentZoneNames()
+    print("  current zone names: " .. WHITE .. table.concat(zoneNames, " | ") .. RESET)
+
+    local todo = Data:GetTodoList()
+    print("  GetTodoList(): " .. WHITE .. #todo .. RESET .. " missing appearances total")
+
+    local match, checked = nil, 0
+    for i = 1, #todo do
+        checked = checked + 1
+        if Data:MatchesCurrentZone(todo[i], zoneNames) then
+            match = todo[i]
+            break
+        end
+    end
+    print("  checked " .. WHITE .. checked .. RESET .. " entries for a zone match" ..
+        (match and "" or " - none matched"))
+
+    if match then
+        print("  " .. ACCENT .. "match:" .. RESET .. " " .. WHITE .. tostring(match.name) .. RESET ..
+            "  place=" .. tostring(match.place))
+    end
+
+    local f = _G["XalsArmoireZoneAlertIcon"]
+    print("  icon frame exists: " .. WHITE .. tostring(f ~= nil) .. RESET ..
+        (f and ("   shown: " .. tostring(f:IsShown())) or ""))
+
+    if Alert and Alert.UpdateVisibility then
+        Say("re-running Alert:UpdateVisibility() now.")
+        Alert:UpdateVisibility()
+    end
+end
+
 function ChatCommands:Handle(input)
     input = input or ""
     local cmd, rest = input:lower():match("^%s*(%S*)%s*(.-)%s*$")
@@ -259,6 +303,9 @@ function ChatCommands:Handle(input)
 
     elseif cmd == "debug" then
         Debug()
+
+    elseif cmd == "zone" then
+        ZoneDebug()
 
     elseif cmd == "why" then
         if rest == "" then
