@@ -1,5 +1,21 @@
 # Xal's Armoire - Changelog
 
+## 1.4.0 - September 14, 2026
+
+---
+
+This one's been a long time coming. Armoire only ever knew where to find something for Midnight, The War Within and Dragonflight - anything older than that just told you "quest" or "vendor" and left you to go figure it out yourself. That never sat right with me, so this update finishes the job: every quest, vendor, profession recipe and achievement write-up now goes all the way back to Classic. There's also a new little icon that'll pop up on your screen whenever you're standing in a zone that actually has something on your list, so you don't have to keep checking the tracker just to find out.
+
+Thanks for being part of the Xal family.
+
+### 🆕 New
+- A floating icon that appears while you're standing in a zone with something you're still missing - no icon at all otherwise. Right-click opens the tracker.
+- Quest, vendor, profession and achievement write-ups now cover every expansion in the game's history, Classic through Midnight, not just the three most recent ones.
+  - Achievements: 224 entries - every single one in the game, nothing left unconfirmed.
+  - Professions: 1,016 entries.
+  - Vendors: 7,523 entries.
+  - Quests: 1,301 entries across 11 of 12 expansions - Battle for Azeroth checked every avenue there is (zone finales, Mechagon, Nazjatar, N'Zoth, Warfronts, allied races, Island Expeditions, the War Campaign) and its questing gear genuinely comes entirely from reputation and vendors instead, not quests.
+
 ## 1.3.0 - September 11, 2026
 
 ---
