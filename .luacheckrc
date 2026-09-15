@@ -57,6 +57,7 @@ read_globals = {
     "hooksecurefunc",
     "wipe",
     "tinsert",
+    "GameTooltip",
 }
 
 -- Textures/backdrop tables and long chained SetPoint calls read as "unused
