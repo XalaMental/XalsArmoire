@@ -27,6 +27,7 @@ AppearanceData.lua
 WhatsNew.lua
 Engine.lua
 MainTracker.lua
+ZoneAlertIcon.lua
 AppearanceDetail.lua
 CollectionWindow.lua
 SettingsPanel.lua
