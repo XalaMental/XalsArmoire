@@ -29,18 +29,31 @@ local displayList = {}
 
 -- What the user actually TYPED, which is what drives the list.
 local typedText = ""
-local zoneOnly = false
-local activeTab = "all"       -- "all" | "raids" | "dungeons"
+local quickWinsFirst = false
+local activeTab = "all"       -- "zone" | "all" | "raids" | "dungeons"
 local slotFilter = nil        -- nil = every slot
 local tabButtons = {}
+
+local function UpdateTabLook()
+    for key, btn in pairs(tabButtons) do
+        if key == activeTab then
+            btn.label:SetTextColor(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 1)
+        else
+            btn.label:SetTextColor(Brand.SIDEBAR_UNSELECTED[1], Brand.SIDEBAR_UNSELECTED[2], Brand.SIDEBAR_UNSELECTED[3], 1)
+        end
+    end
+end
 
 -- ── Section collapse state ───────────────────────────────────────
 -- Only the Raids and Dungeons tabs have sections now - the All tab is a flat
 -- list - so every section is an instance name. Any explicit choice the player
 -- makes is remembered.
-local function IsCollapsed(name)
+local function IsCollapsed(name, isBoss)
     local db = type(XalsArmoireDB) == "table" and XalsArmoireDB.collapsedSections
     if db and db[name] ~= nil then return db[name] end
+    -- Bosses always start open: opening an instance should show its items,
+    -- not a second row of closed headers to click through.
+    if isBoss then return false end
     -- On the Raids/Dungeons tabs every section is an instance and the list is
     -- already narrow, so start them open rather than making the player expand
     -- each one.
@@ -82,7 +95,7 @@ local function AcquireRow(index)
 
     local hl = row:CreateTexture(nil, "BACKGROUND")
     hl:SetAllPoints()
-    hl:SetColorTexture(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 0.16)
+    hl:SetColorTexture(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 0.16)
     hl:Hide()
     row.highlight = hl
 
@@ -114,12 +127,27 @@ local function AcquireRow(index)
 
     row:SetScript("OnEnter", function(self) self.highlight:Show() end)
     row:SetScript("OnLeave", function(self) self.highlight:Hide() end)
-    row:SetScript("OnClick", function(self)
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row:SetScript("OnClick", function(self, button)
         if self.sectionKey then
-            SetCollapsed(self.sectionKey, not IsCollapsed(self.sectionKey))
+            SetCollapsed(self.sectionKey, not IsCollapsed(self.sectionKey, self.isBoss))
             Tracker:Refresh()
         elseif self.entry then
-            addonTable.AppearanceDetail:Show(self.entry)
+            if button == "RightButton" then
+                local entry = self.entry
+                local isFav = Data:IsFavorite(entry.visualID)
+                Brand.ShowContextMenu({
+                    {
+                        label = isFav and "Remove from Favorites" or "Add to Favorites",
+                        onClick = function()
+                            Data:ToggleFavorite(entry.visualID)
+                            Tracker:Refresh()
+                        end,
+                    },
+                })
+            else
+                addonTable.AppearanceDetail:Show(self.entry)
+            end
         end
     end)
 
@@ -139,7 +167,7 @@ local function FilteredTodo()
 
     local todo = Data:GetTodoList(slotFilter)
 
-    if zoneOnly then
+    if activeTab == "zone" then
         -- Resolved once per refresh rather than per appearance.
         local zoneNames = Data:CurrentZoneNames()
         local zoned = {}
@@ -171,10 +199,23 @@ local function BuildDisplayList(todo)
         local flat = {}
         for i = 1, #todo do flat[#flat + 1] = todo[i] end
 
-        -- Alphabetical, because that is how people look for a piece by name.
-        -- Anything still waiting on its name from the server sorts to the
-        -- bottom rather than jumbling the middle of the list.
+        -- Favorites always float to the top regardless of the other
+        -- options below - if you bothered to pin it, you want to see it
+        -- without hunting. Quick wins (vendor purchases - no travel or RNG
+        -- involved) come next, only when that option is turned on. Below
+        -- both, alphabetical, because that is how people look for a piece
+        -- by name. Anything still waiting on its name from the server
+        -- sorts to the bottom rather than jumbling the middle of the list.
         table.sort(flat, function(a, b)
+            local afav, bfav = Data:IsFavorite(a.visualID), Data:IsFavorite(b.visualID)
+            if afav ~= bfav then return afav end
+
+            if quickWinsFirst then
+                local aquick = a.sourceType == 3
+                local bquick = b.sourceType == 3
+                if aquick ~= bquick then return aquick end
+            end
+
             local an, bn = a.name, b.name
             if an and bn then return an < bn end
             if an then return true end
@@ -199,22 +240,36 @@ local function BuildDisplayList(todo)
         sections = Data:GroupByInstance(all, "dungeon")
     end
 
-    -- Flat: instance -> its items directly. Which specific boss drops
-    -- something is one click away on the popup's Wowhead link, not its own
-    -- row in this tree.
+    -- Instance -> boss -> items. Every header carries "N of M collected" so
+    -- progress is readable without opening anything.
     local display = {}
     for i = 1, #sections do
         local section = sections[i]
         local collapsed = IsCollapsed(section.name)
         display[#display + 1] = {
             sectionName = section.name,
-            count = section.missingCount,
+            count = section.collectedCount .. " of " .. section.totalCount .. " collected",
             collapsed = collapsed,
             depth = 0,
         }
         if not collapsed then
-            for j = 1, #section.entries do
-                display[#display + 1] = { entry = section.entries[j], depth = 1 }
+            for b = 1, #section.bosses do
+                local boss = section.bosses[b]
+                local bossKey = section.name .. "\031" .. boss.name
+                local bossCollapsed = IsCollapsed(bossKey, true)
+                display[#display + 1] = {
+                    sectionName = boss.name,
+                    sectionKey = bossKey,
+                    count = boss.collected .. " of " .. boss.total .. " collected",
+                    collapsed = bossCollapsed,
+                    isBoss = true,
+                    depth = 1,
+                }
+                if not bossCollapsed then
+                    for j = 1, #boss.entries do
+                        display[#display + 1] = { entry = boss.entries[j], depth = 2 }
+                    end
+                end
             end
         end
     end
@@ -246,8 +301,10 @@ local function FillRows()
             row.entry = item.entry
             row.sectionName = item.sectionName
             row.sectionKey = item.sectionKey or item.sectionName
+            row.isBoss = item.isBoss
 
-            -- Indent by tree depth: 0 = instance header, 1 = item. Icon is
+            -- Indent by tree depth: 0 = instance header, 1 = boss header,
+            -- 2 = item (1 on the flat tabs). Icon is
             -- re-anchored per fill since the same pooled row is reused at
             -- every depth as the list scrolls.
             row.icon:ClearAllPoints()
@@ -259,7 +316,11 @@ local function FillRows()
                 row.sourceText:SetText("|cff999999" .. item.count .. "|r")
                 local prefix = (item.collapsed and "+  " or "-  ")
                 row.nameText:SetText(prefix .. item.sectionName)
-                row.nameText:SetTextColor(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
+                if item.isBoss then
+                    row.nameText:SetTextColor(Brand.GOLD[1], Brand.GOLD[2], Brand.GOLD[3])
+                else
+                    row.nameText:SetTextColor(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
+                end
                 row:Show()
             else
                 local entry = item.entry
@@ -281,9 +342,15 @@ local function FillRows()
                     end
                 end
 
-                row.nameText:SetText(displayName
+                -- A pinned favorite gets a star prefix right on the name -
+                -- cheaper than a separate icon/frame in an already-tight
+                -- row, and it's the one thing every row already has room
+                -- to grow by a couple of characters.
+                local favPrefix = Data:IsFavorite(entry.visualID) and "|cffb88c38\226\152\133 |r" or ""
+
+                row.nameText:SetText(favPrefix .. (displayName
                 or (entry.nameFailed and "|cff777777Name unavailable|r")
-                or "|cff777777Loading...|r")
+                or "|cff777777Loading...|r"))
 
                 -- More than one item granting the same look is the whole point of
                 -- tracking looks rather than items, so the source line says so.
@@ -371,7 +438,7 @@ function Tracker:Refresh()
     local stats = Data.stats
     if Data.resolvingAll then
         countText:SetText("|cff999999Reading your collection...|r")
-    elseif zoneOnly and typedText == "" then
+    elseif activeTab == "zone" and typedText == "" then
         countText:SetText(#todo .. " here  |cff999999in " .. (GetRealZoneText() or "?") .. "|r")
     elseif typedText ~= "" then
         countText:SetText(#todo .. " match" .. (#todo == 1 and "" or "es") ..
@@ -429,13 +496,16 @@ local function BuildWindow()
     end
 
     if type(XalsArmoireDB) == "table" then
-        zoneOnly   = XalsArmoireDB.zoneOnly and true or false
-        activeTab  = XalsArmoireDB.activeTab or "all"
-        slotFilter = XalsArmoireDB.slotFilter
+        quickWinsFirst = XalsArmoireDB.quickWinsFirst and true or false
+        activeTab      = XalsArmoireDB.activeTab or "all"
+        slotFilter     = XalsArmoireDB.slotFilter
     end
 
-    Brand.ApplyBackground(f)
-    Brand.DrawBorder(f)
+    -- Kept as f.keepChrome so Xal's Keep can hide them while this window
+    -- sits inside it (the Keep draws its own).
+    local bg = Brand.ApplyBackground(f)
+    local bTop, bBottom, bLeft, bRight = Brand.DrawBorder(f, 1)
+    f.keepChrome = { bg, bTop, bBottom, bLeft, bRight }
 
     Brand.Title(f, "Appearances to Collect", 22, "TOP", f, "TOP", 0, -Brand.SAFE_MARGIN - 4)
 
@@ -444,22 +514,16 @@ local function BuildWindow()
     countText:SetPoint("TOP", f, "TOP", 0, -44)
 
     -- Tabs. Text links rather than boxed tabs, matching the rest of the suite;
-    -- the active one is white, the others accent gold.
+    -- the active one is this addon's header color, the others the muted
+    -- sidebar-link gray - same treatment Reins' tabs got 2026-09-29. Zone is
+    -- a real tab now, leftmost, replacing the old "this zone only" checkbox
+    -- entirely - same change made on Reins the same day.
     local TABS = {
+        { key = "zone",     label = "Zone" },
         { key = "all",      label = "All" },
         { key = "raids",    label = "Raids" },
         { key = "dungeons", label = "Dungeons" },
     }
-
-    local function UpdateTabLook()
-        for key, btn in pairs(tabButtons) do
-            if key == activeTab then
-                btn.label:SetTextColor(1, 1, 1, 1)
-            else
-                btn.label:SetTextColor(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 1)
-            end
-        end
-    end
 
     local previous
     for i = 1, #TABS do
@@ -469,7 +533,15 @@ local function BuildWindow()
             if type(XalsArmoireDB) == "table" then XalsArmoireDB.activeTab = activeTab end
             UpdateTabLook()
             Tracker:Refresh()
-        end, 15)
+        end)
+        -- Bumped from MakeTextLink's default GameFontHighlightSmall - was
+        -- reading too small for a primary nav row. Real bold (Inter
+        -- SemiBold), not the OUTLINE flag, which only outlines the glyphs
+        -- rather than changing their weight. Width has to be recomputed
+        -- after the font change since MakeTextLink already sized the button
+        -- off the smaller font's string width.
+        btn.label:SetFont(Brand.BODY_FONT_PATH_SEMIBOLD, 15, "")
+        btn:SetWidth(math.max(40, btn.label:GetStringWidth() + 8))
         -- The hover handlers would otherwise fight the active-tab colouring.
         btn:SetScript("OnLeave", function() UpdateTabLook() end)
 
@@ -508,22 +580,26 @@ local function BuildWindow()
         self:ClearFocus()
     end)
 
-    -- Zone checkbox, same control and same place as Reins'.
-    local zoneCheck = Brand.MakeCheckbox(f, 20)
-    zoneCheck:SetPoint("TOPLEFT", f, "TOPLEFT", Brand.SAFE_MARGIN + 14, -119)
-    zoneCheck:SetChecked(zoneOnly)
+    -- Quick-win sort: vendor purchases need no travel/RNG, so they're the
+    -- fastest ones to actually knock out - optional, since not everyone
+    -- wants their usual alphabetical order upended by it. Sits where the
+    -- old "this zone only" checkbox used to be, now that Zone is a real tab
+    -- (2026-09-29, matching the same change on Reins).
+    local quickCheck = Brand.MakeCheckbox(f, 20)
+    quickCheck:SetPoint("TOPLEFT", f, "TOPLEFT", Brand.SAFE_MARGIN + 14, -119)
+    quickCheck:SetChecked(quickWinsFirst)
 
-    local zoneLabel = Brand.FS(f, "Only show appearances from this zone",
+    local quickLabel = Brand.FS(f, "Vendor items first (quick wins)",
         Brand.BODY_FONT_PATH, 13, nil, Brand.GOLD[1], Brand.GOLD[2], Brand.GOLD[3])
-    zoneLabel:SetPoint("LEFT", zoneCheck, "RIGHT", 8, 0)
-    zoneLabel:SetJustifyH("LEFT")
+    quickLabel:SetPoint("LEFT", quickCheck, "RIGHT", 8, 0)
+    quickLabel:SetJustifyH("LEFT")
 
-    zoneCheck.OnToggle = function(self)
-        zoneOnly = self:GetChecked() and true or false
-        if type(XalsArmoireDB) == "table" then XalsArmoireDB.zoneOnly = zoneOnly end
+    quickCheck.OnToggle = function(self)
+        quickWinsFirst = self:GetChecked() and true or false
+        if type(XalsArmoireDB) == "table" then XalsArmoireDB.quickWinsFirst = quickWinsFirst end
         Tracker:Refresh()
     end
-    f.zoneCheck = zoneCheck
+    f.quickCheck = quickCheck
 
     -- Slot filter. The one control Reins has no equivalent for, because
     -- mounts don't have slots. Sits on the filter row, right-aligned, so it
@@ -568,7 +644,7 @@ local function BuildWindow()
 
                 local bh = btn:CreateTexture(nil, "BACKGROUND")
                 bh:SetAllPoints()
-                bh:SetColorTexture(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 0.16)
+                bh:SetColorTexture(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 0.16)
                 bh:Hide()
                 btn.highlight = bh
                 btn:SetScript("OnEnter", function(s) s.highlight:Show() end)
@@ -620,7 +696,7 @@ local function BuildWindow()
     scrollThumb:SetWidth(8)
     scrollThumb:SetThumbTexture("Interface\\Buttons\\WHITE8x8")
     local scrollThumbTex = scrollThumb:GetThumbTexture()
-    scrollThumbTex:SetVertexColor(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 1)
+    scrollThumbTex:SetVertexColor(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 1)
     scrollThumbTex:SetWidth(8)
 
     local suppressScrollCallback = false
@@ -700,6 +776,7 @@ local function BuildWindow()
 
     local close = Brand.MakeCloseButton(f, function() f:Hide() end)
     close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -Brand.SAFE_MARGIN - 4, Brand.SAFE_MARGIN)
+    f.keepChrome[#f.keepChrome + 1] = close
 
     -- Everything in this window sizes itself from its own edges EXCEPT the
     -- scroll child: attaching a frame to a ScrollFrame overrides its anchors,
@@ -762,7 +839,76 @@ local function StartResolving()
     end)
 end
 
+-- ── Xal's Keep ───────────────────────────────────────────────────
+-- When Xal's Keep is installed, this window lives inside the Keep instead of
+-- floating on its own, and every way of opening it (minimap button, /xao,
+-- the zone alert) opens the Keep on the Armoire tab. Without the Keep,
+-- nothing here runs and the window behaves exactly as before.
+local KEEP_KEY = "armoire"
+
+-- Re-homes the window into the Keep's content area. The Keep supplies the
+-- background, border, Close and dragging, so ours step aside; mouse goes off
+-- on the window itself so a click on empty space drags the Keep instead.
+-- Rows, tabs and links are their own frames and still take clicks.
+local function AttachToKeep(container)
+    local f = BuildWindow()
+    f.keepHost = container
+    f:SetParent(container)
+    f:ClearAllPoints()
+    f:SetPoint("TOP", container, "TOP", 0, 0)
+    f:SetPoint("BOTTOM", container, "BOTTOM", 0, 0)
+    f:SetFrameStrata(container:GetFrameStrata())
+    f:SetFrameLevel(container:GetFrameLevel() + 1)
+    f:SetToplevel(false)
+    f:SetMovable(false)
+    f:EnableMouse(false)
+    f:SetClampedToScreen(false)
+    for _, region in ipairs(f.keepChrome) do region:Hide() end
+    -- Escape closes the Keep as a whole, not just this tab.
+    for i = #UISpecialFrames, 1, -1 do
+        if UISpecialFrames[i] == "XalsArmoireTracker" then table.remove(UISpecialFrames, i) end
+    end
+    return f
+end
+
+local function ShowInKeep()
+    Tracker:Refresh()
+    frame:Show()
+    StartResolving()
+end
+
+if XalsKeep and XalsKeep.Register then
+    XalsKeep:Register(KEEP_KEY, {
+        label    = "Armoire",
+        addon    = "XalsArmoire",
+        attach   = AttachToKeep,
+        show     = ShowInKeep,
+        showZone = function() Tracker:ShowZoneOnly() end,
+        -- Armoire's own settings, shown on its page in the Keep's options.
+        -- Same saved keys and behavior as its own options window.
+        settings = {
+            {
+                label = "Announce new appearances in chat",
+                desc  = "Prints a line when you collect a look you didn't have, with your running total.",
+                get   = function() return addonTable.SettingsPanel:Get("announceCollected") end,
+                set   = function(v) addonTable.SettingsPanel:Set("announceCollected", v) end,
+            },
+            {
+                label = "Start Raids and Dungeons collapsed",
+                desc  = "Opens those two tabs as a short list of instance names rather than every "
+                    .. "row at once. Sections you open by hand are remembered either way.",
+                get   = function() return addonTable.SettingsPanel:Get("collapseByDefault") end,
+                set   = function(v)
+                    addonTable.SettingsPanel:Set("collapseByDefault", v)
+                    if Tracker:IsShown() then Tracker:Refresh() end
+                end,
+            },
+        },
+    })
+end
+
 function Tracker:Toggle()
+    if XalsKeep then return XalsKeep:Toggle(KEEP_KEY) end
     local f = BuildWindow()
     if f:IsShown() then
         f:Hide()
@@ -774,12 +920,32 @@ function Tracker:Toggle()
 end
 
 function Tracker:Show()
+    if XalsKeep then return XalsKeep:Show(KEEP_KEY) end
     BuildWindow()
     self:Refresh()
     frame:Show()
     StartResolving()
 end
 
+-- Inside the Keep, "shown" has to mean actually on screen - the window stays
+-- flagged shown while the Keep is closed or on another tab.
 function Tracker:IsShown()
+    if frame and frame.keepHost then return frame:IsVisible() end
     return frame and frame:IsShown()
+end
+
+-- Opens the tracker on the Zone tab, for the zone-alert icon's right-click.
+-- Only switches tabs if it isn't already on Zone, so this never fights a
+-- player who's mid-browsing a different tab when the icon happens to flash.
+function Tracker:ShowZoneOnly()
+    local f = BuildWindow()
+    if activeTab ~= "zone" then
+        activeTab = "zone"
+        if type(XalsArmoireDB) == "table" then XalsArmoireDB.activeTab = "zone" end
+        UpdateTabLook()
+    end
+    if XalsKeep then return XalsKeep:Show(KEEP_KEY) end
+    self:Refresh()
+    f:Show()
+    StartResolving()
 end
