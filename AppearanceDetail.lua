@@ -24,6 +24,63 @@ local function QualityColor(quality)
     return "|cffffffff"
 end
 
+-- TomTom is preferred when it's installed (a real arrow, distance readout,
+-- the works) since it's almost always present; Blizzard's own native
+-- waypoint pin is the fallback otherwise, so this still works with nothing
+-- else installed. Module-level since both the card pool (built per-show)
+-- and BuildFrame (built once) need it.
+local function SetWaypoint(loc)
+    if not loc then return end
+    if TomTom and TomTom.AddMFWaypoint then
+        TomTom:AddMFWaypoint(loc.mapID, nil, loc.x, loc.y, { title = "Xal's Armoire vendor" })
+        print("|cffb88c38Xal's Armoire:|r waypoint set via TomTom.")
+    elseif C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates then
+        local point = UiMapPoint.CreateFromCoordinates(loc.mapID, loc.x, loc.y)
+        C_Map.SetUserWaypoint(point)
+        if C_SuperTrack then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+        print("|cffb88c38Xal's Armoire:|r waypoint set.")
+    end
+end
+
+-- ── Source cards ─────────────────────────────────────────────────
+-- One bordered card per distinct source (a quest, a vendor, a crafting
+-- recipe, an achievement, a boss/instance drop location) - replaces the old
+-- single wrapped paragraph (confirmed live 2026-09-29/30: a bracketed
+-- "[Set Waypoint]" link embedded in wrapped text can get split across a
+-- line break mid-bracket, and a long list of unrelated sources just read as
+-- a wall of text). Matches the quest log's own card-per-objective look, and
+-- a vendor's own card has room for its own "Set Waypoint" button - no
+-- wrapping risk, since it's never embedded in body text.
+--
+-- Pool, not fixed-size: card COUNT genuinely varies (one source, or a dozen
+-- raid/boss drop locations after the comprehensive research pass), same
+-- grow-on-demand pattern as MainTracker's row pool, just not a fixed small
+-- number since these aren't scrolled - the window grows to fit instead.
+local cardPool = {}
+
+local function AcquireCard(parent, index)
+    local card = cardPool[index]
+    if card then return card end
+
+    card = CreateFrame("Frame", nil, parent)
+    Brand.DrawBorder(card, 0)
+
+    local text = Brand.FS(card, "", Brand.BODY_FONT_PATH, 13, nil, 1, 1, 1)
+    text:SetPoint("TOPLEFT", card, "TOPLEFT", 8, -8)
+    text:SetJustifyH("LEFT")
+    text:SetWordWrap(true)
+    text:SetSpacing(3)
+    card.text = text
+
+    local waypointBtn = Brand.MakeTextLink(card, "Set Waypoint", function()
+        SetWaypoint(card.waypointLoc)
+    end)
+    waypointBtn:SetPoint("TOPRIGHT", card, "TOPRIGHT", -8, -8)
+    card.waypointBtn = waypointBtn
+
+    cardPool[index] = card
+    return card
+end
 
 local function BuildFrame()
     if frame then return frame end
@@ -54,7 +111,7 @@ local function BuildFrame()
     end
 
     Brand.ApplyBackground(f)
-    Brand.DrawBorder(f)
+    Brand.DrawBorder(f, 1)
 
     local icon = f:CreateTexture(nil, "ARTWORK")
     icon:SetSize(44, 44)
@@ -63,7 +120,7 @@ local function BuildFrame()
     f.icon = icon
 
     local title = Brand.FS(f, "", Brand.TITLE_FONT_PATH, 20, nil,
-        Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
+        Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
     title:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, -4)
     title:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN, 0)
     title:SetJustifyH("LEFT")
@@ -92,26 +149,31 @@ local function BuildFrame()
     divider:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN, 0)
 
     local heading = Brand.FS(f, "Where it comes from", Brand.TITLE_FONT_PATH, 15, nil,
-        Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
+        Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
     heading:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 6, -12)
+    f.sourceHeading = heading
 
-    local source = Brand.FS(f, "", Brand.BODY_FONT_PATH, 13, nil, 1, 1, 1)
-    source:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -6)
-    source:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN - 4, 0)
-    source:SetJustifyH("LEFT")
-    source:SetWordWrap(true)
-    source:SetSpacing(3)
-    f.sourceText = source
+    -- Fallback-only plain text (no researched source at all, or a genuine
+    -- data gap) - real sources render as cards instead, built fresh each
+    -- Detail:Show since the count varies per item. Kept as one FontString
+    -- since these are always a single status message, never a real list.
+    local status = Brand.FS(f, "", Brand.BODY_FONT_PATH, 13, nil, 1, 1, 1)
+    status:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -6)
+    status:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN - 4, 0)
+    status:SetJustifyH("LEFT")
+    status:SetWordWrap(true)
+    status:SetSpacing(3)
+    f.statusText = status
 
     local blocked = Brand.FS(f, "", Brand.BODY_FONT_PATH, 12, nil, 0.87, 0.33, 0.33)
-    blocked:SetPoint("TOPLEFT", source, "BOTTOMLEFT", 0, -10)
+    blocked:SetPoint("TOPLEFT", status, "BOTTOMLEFT", 0, -10)
     blocked:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN - 4, 0)
     blocked:SetJustifyH("LEFT")
     blocked:SetWordWrap(true)
     f.blockedText = blocked
 
     local itemsHeading = Brand.FS(f, "", Brand.TITLE_FONT_PATH, 15, nil,
-        Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
+        Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
     itemsHeading:SetPoint("TOPLEFT", blocked, "BOTTOMLEFT", 0, -12)
     f.itemsHeading = itemsHeading
 
@@ -182,10 +244,13 @@ function Detail:Show(entry)
     end
     f.categoryText:SetText(category)
 
-    -- Where it drops. Every distinct instance/boss/difficulty across all the
-    -- items that grant this look, de-duplicated - the same raid listed six
-    -- times because six items drop there is noise, not information.
-    local lines, seen = {}, {}
+    -- One card per distinct source (a quest, a vendor, a crafting recipe, an
+    -- achievement, a boss/instance drop location) - each entry is
+    -- { text = "...", waypointLoc = <location or nil> }. De-duplicated by
+    -- text, same as the old flat-line list this replaces - the same raid
+    -- listed six times because six items drop there is noise, not
+    -- information.
+    local sourceEntries, seen = {}, {}
 
     -- Researched sources first. The client only ever gives a source TYPE, so
     -- the actual quest, vendor, recipe or achievement comes from the tables
@@ -194,10 +259,10 @@ function Detail:Show(entry)
     -- than showing nothing.
     local researchable, researched = false, false
 
-    local function Add(line)
-        if line and line ~= "" and not seen[line] then
-            seen[line] = true
-            lines[#lines + 1] = line
+    local function Add(text, waypointLoc)
+        if text and text ~= "" and not seen[text] then
+            seen[text] = true
+            sourceEntries[#sourceEntries + 1] = { text = text, waypointLoc = waypointLoc }
             researched = true
         end
     end
@@ -218,10 +283,22 @@ function Detail:Show(entry)
                 local line = (n and n > 1)
                     and ("One of " .. n .. " rewards from |cffffffff" .. q.quest .. "|r")
                     or ("Rewarded by |cffffffff" .. q.quest .. "|r")
+                local waypointLoc
                 if q.start and q.start ~= "" then
                     line = line .. "\n   |cff999999" .. q.start .. "|r"
+                    -- q.start is free text ("Starts from Pip Quickwit") -
+                    -- the giver's own NAME is all QuestGiverLocations.lua is
+                    -- keyed by, so pull it back out the same way the
+                    -- research files always phrase it.
+                    local giverName = q.start:match("^Starts from (.+)$")
+                    if giverName then
+                        local locs = Data:QuestGiverLocationFor(giverName)
+                        if #locs == 1 then
+                            waypointLoc = locs[1]
+                        end
+                    end
                 end
-                Add(line)
+                Add(line, waypointLoc)
             end
 
         -- Vendor. One item can be sold by several NPCs, so every one is listed
@@ -254,7 +331,21 @@ function Detail:Show(entry)
                     if e.note and e.note ~= "" then
                         line = line .. "\n   |cff999999" .. e.note .. "|r"
                     end
-                    Add(line)
+                    -- VendorSources.lua only ever recorded a NAME, so this is
+                    -- a best-effort cross-reference against the shared
+                    -- vendor-location data, not a guaranteed hit - a name
+                    -- VendorMap never recorded just leaves this card's
+                    -- waypoint button off. A name that's genuinely
+                    -- ambiguous (more than one real candidate NPC) is
+                    -- skipped the same way, rather than guessing.
+                    local waypointLoc
+                    if e.vendor then
+                        local locs = Data:VendorLocationFor(e.vendor, e.zone)
+                        if #locs == 1 then
+                            waypointLoc = locs[1]
+                        end
+                    end
+                    Add(line, waypointLoc)
                 end
 
                 -- `seasonal` is deliberately NOT shown, and the reason is
@@ -317,47 +408,95 @@ function Detail:Show(entry)
                 where = where .. "  |cff777777(" ..
                     table.concat(drop.difficulties, ", ") .. ")|r"
             end
-            if where ~= "" and not seen[where] then
-                seen[where] = true
-                lines[#lines + 1] = where
-            end
+            Add(where)
         end
-    end
-
-    if #lines > 0 then
-        f.sourceText:SetText(table.concat(lines, "\n"))
-    elseif entry.sourceType == 3 then
-        -- Wowhead's own item page lists exactly who sells an item - that
-        -- "Sold by" panel comes from the same client data this addon reads,
-        -- so there's no research gap to fill; the link below already has it.
-        f.sourceText:SetText("Sold by a vendor - check the Wowhead link below for exactly who and where.")
-    elseif researchable then
-        -- A researchable source the data hasn't reached yet. Say so plainly -
-        -- "Quest" or "Vendor" on its own is useless, and pretending otherwise
-        -- is worse than admitting the gap.
-        f.sourceText:SetText("This comes from " ..
-            Data:SourceLabel(entry.sourceType):lower() ..
-            ", but the details aren't written up yet. Midnight, The War Within "
-            .. "and Dragonflight are covered so far.")
-    elseif entry.sourceType == 0 then
-        -- Verified during research: Blizzard's own data carries no source for
-        -- these, and Wowhead derives its source panels from the same tables,
-        -- so there is nothing to look up anywhere. Some of them are developer
-        -- test assets that were never obtainable.
-        f.sourceText:SetText("Blizzard records no source for this appearance.")
-    elseif entry.sourceType == 4 and entry.worldDropCreature then
-        -- World Drop with a researched creature/rare behind it - the client
-        -- itself never carries this, only Wowhead's own rare-loot guides do.
-        f.sourceText:SetText("Dropped by |cffffffff" .. entry.worldDropCreature .. "|r.")
-    else
-        -- World drops and the like genuinely have nowhere to point at.
-        f.sourceText:SetText("The game doesn't record a location for this one - it comes from "
-            .. Data:SourceLabel(entry.sourceType):lower() .. ".")
     end
 
     -- researched is set by Add(); referenced here so its purpose is explicit
     -- rather than looking like a stray local.
     f.hasResearchedSource = researched
+
+    -- lastAnchor is whatever the true bottom edge of the "Where it comes
+    -- from" section ends up being this time - either the last real card, or
+    -- the fallback status message - so blockedText (and everything chained
+    -- below it) always re-anchors to the right place regardless of how many
+    -- cards there were.
+    local lastAnchor = f.sourceHeading
+
+    if #sourceEntries > 0 then
+        f.statusText:Hide()
+        for i = 1, #sourceEntries do
+            local entryInfo = sourceEntries[i]
+            local card = AcquireCard(f, i)
+            card:ClearAllPoints()
+            card:SetPoint("TOPLEFT", lastAnchor, "BOTTOMLEFT", 0, -8)
+            card:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN - 4, 0)
+
+            card.waypointLoc = entryInfo.waypointLoc
+            if entryInfo.waypointLoc then
+                card.waypointBtn:Show()
+                -- Reserve room on the right for the button regardless of
+                -- how long its own label ends up, so the text can never
+                -- run underneath it - fixed inset, not computed from the
+                -- button's actual width, so this can't shift per-card.
+                card.text:SetPoint("RIGHT", card, "RIGHT", -90, 0)
+            else
+                card.waypointBtn:Hide()
+                card.text:SetPoint("RIGHT", card, "RIGHT", -8, 0)
+            end
+            card.text:SetText(entryInfo.text)
+
+            -- Height follows content - GetStringHeight() only reflects the
+            -- REAL wrapped layout once width is actually set, same reason
+            -- WhatsNew.lua's own bullet sizing works this way.
+            local textHeight = math.max(card.text:GetStringHeight() or 16, 16)
+            card:SetHeight(textHeight + 16)
+            card:Show()
+
+            lastAnchor = card
+        end
+    else
+        for i = 1, #cardPool do cardPool[i]:Hide() end
+
+        local status
+        if entry.sourceType == 3 then
+            -- Wowhead's own item page lists exactly who sells an item - that
+            -- "Sold by" panel comes from the same client data this addon
+            -- reads, so there's no research gap to fill; the link below
+            -- already has it.
+            status = "Sold by a vendor - check the Wowhead link below for exactly who and where."
+        elseif researchable then
+            -- A researchable source the data hasn't reached yet. Say so
+            -- plainly - "Quest" or "Vendor" on its own is useless, and
+            -- pretending otherwise is worse than admitting the gap.
+            status = "This comes from " .. Data:SourceLabel(entry.sourceType):lower() ..
+                ", but the details aren't written up yet. Midnight, The War Within " ..
+                "and Dragonflight are covered so far."
+        elseif entry.sourceType == 0 then
+            -- Verified during research: Blizzard's own data carries no
+            -- source for these, and Wowhead derives its source panels from
+            -- the same tables, so there is nothing to look up anywhere.
+            -- Some of them are developer test assets that were never
+            -- obtainable.
+            status = "Blizzard records no source for this appearance."
+        elseif entry.sourceType == 4 and entry.worldDropCreature then
+            -- World Drop with a researched creature/rare behind it - the
+            -- client itself never carries this, only Wowhead's own
+            -- rare-loot guides do.
+            status = "Dropped by |cffffffff" .. entry.worldDropCreature .. "|r."
+        else
+            -- World drops and the like genuinely have nowhere to point at.
+            status = "The game doesn't record a location for this one - it comes from " ..
+                Data:SourceLabel(entry.sourceType):lower() .. "."
+        end
+        f.statusText:SetText(status)
+        f.statusText:Show()
+        lastAnchor = f.statusText
+    end
+
+    f.blockedText:ClearAllPoints()
+    f.blockedText:SetPoint("TOPLEFT", lastAnchor, "BOTTOMLEFT", 0, -10)
+    f.blockedText:SetPoint("RIGHT", f, "RIGHT", -Brand.SAFE_MARGIN - 4, 0)
 
     -- The client's own reason this character can't collect it, if there is one.
     local why
