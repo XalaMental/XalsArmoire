@@ -1,5 +1,34 @@
 # Xal's Armoire - Changelog
 
+## 1.5.0 - October 23, 2026
+
+---
+
+I never wanted Armoire to just tell you what you're missing and then leave you to go look up the rest. Every time I had to alt-tab to Wowhead to find where a vendor stands or who starts a quest, it felt like the addon had stopped one step short. So this update closes that gap: most vendors and a lot of quest-givers now have a Set Waypoint button that drops a pin right on your map, and the places where you actually decide about an item, like your loot, vendors and quest rewards, now flag the looks you're missing on their own.
+
+I also brought Armoire into the same look as the rest of my addons, added a Zone tab, and if you use Xal's Keep, Armoire slots right into it.
+
+Thanks for being part of the Xal family.
+
+### 🆕 New
+
+- **Set Waypoint on vendors and quest-givers** - puts a pin on your map (or a TomTom arrow, if you use it) at the vendor or the person who starts the quest.
+- **Missing-look markers** - a small wardrobe icon on any item whose look you don't have yet, in your loot, Need/Greed rolls, vendor windows and quest rewards.
+- **Item tooltips** - a line saying whether you're missing that item's look, or already have it from a different item.
+- **Cards in "where it comes from"** - every quest, vendor, recipe, achievement and drop location sits in its own box, so you can spot the one you can actually do.
+- **A Zone tab** - shows just the looks you can get in the zone you're standing in. It replaces the old "this zone only" checkbox.
+- **A count on the zone icon** - a small number showing how many looks you can get in your current zone.
+- **Boss rows on Raids and Dungeons** - drops are split by boss, with "N of M collected" on every header.
+- **Favorites and Vendor items first** - right-click a row to pin it, and sort the no-travel vendor buys to the top.
+- **Still-to-go count** - the minimap button and zone icon tooltips show how many looks are left on your list.
+- **More vendors** - 30 vendors in the newest Midnight zones now have exact locations.
+- **Xal's Keep support** - if you have Xal's Keep installed, Armoire opens inside it and the Keep's single icon takes over the minimap button and zone alert.
+
+### ⚙️ Changed
+
+- A fresh look across every window - new colors, new fonts, text-style buttons, and the real Discord logo as the link.
+- Two new options in settings, one for the item markers and one for the tooltip line. Both are on by default.
+
 ## 1.4.0 - September 14, 2026
 
 ---
