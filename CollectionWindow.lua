@@ -33,7 +33,7 @@ local function AcquireRow(index)
 
     local hl = row:CreateTexture(nil, "BACKGROUND")
     hl:SetAllPoints()
-    hl:SetColorTexture(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 0.16)
+    hl:SetColorTexture(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 0.16)
     hl:Hide()
     row.highlight = hl
 
@@ -203,7 +203,7 @@ local function BuildWindow()
     end
 
     Brand.ApplyBackground(f)
-    Brand.DrawBorder(f)
+    Brand.DrawBorder(f, 1)
 
     Brand.Title(f, "My Collection", 22, "TOP", f, "TOP", 0, -Brand.SAFE_MARGIN - 4)
 
@@ -246,7 +246,7 @@ local function BuildWindow()
 
                 local bh = btn:CreateTexture(nil, "BACKGROUND")
                 bh:SetAllPoints()
-                bh:SetColorTexture(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 0.16)
+                bh:SetColorTexture(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 0.16)
                 bh:Hide()
                 btn.highlight = bh
                 btn:SetScript("OnEnter", function(s) s.highlight:Show() end)
@@ -323,7 +323,7 @@ local function BuildWindow()
     scrollThumb:SetWidth(8)
     scrollThumb:SetThumbTexture("Interface\\Buttons\\WHITE8x8")
     local scrollThumbTex = scrollThumb:GetThumbTexture()
-    scrollThumbTex:SetVertexColor(Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3], 1)
+    scrollThumbTex:SetVertexColor(Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3], 1)
     scrollThumbTex:SetWidth(8)
 
     local suppress = false
