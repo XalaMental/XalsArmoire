@@ -20,6 +20,11 @@ local MINIMAP_ICON = "Interface\\AddOns\\XalsArmoire\\Textures\\MinimapIcon_v1.p
 local MINIMAP_ICON_SIZE = 34
 
 function MinimapButton:Register()
+    -- With Xal's Keep installed, the Keep's rook is the one minimap button
+    -- for the whole collection suite - this addon lives under it instead of
+    -- adding a button of its own.
+    if XalsKeep then return end
+
     local ldb = LibStub("LibDataBroker-1.1"):NewDataObject("XalsArmoire", {
         type = "launcher",
         text = "Xal's Armoire",
@@ -43,6 +48,8 @@ function MinimapButton:Register()
                 if s and s.total > 0 then
                     tooltip:AddLine("|cffffffff" .. s.collected .. "|r of |cffffffff" ..
                         s.total .. "|r unique appearances collected")
+                    tooltip:AddLine("|cffffffff" .. Data:TotalRemainingCount() ..
+                        "|r still on your to-do list")
                 end
             end
 
