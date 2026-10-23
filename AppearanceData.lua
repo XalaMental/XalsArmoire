@@ -1051,6 +1051,167 @@ function Data:IsUnobtainable(entry)
     return false
 end
 
+-- ── Favorites ────────────────────────────────────────────────────
+-- A small, player-picked subset of the to-do list, persisted independently
+-- of collection state. Keyed by visualID - the same identity everything
+-- else in this file already uses, so a favorite survives no matter which
+-- specific item ends up granting the look.
+function Data:IsFavorite(visualID)
+    return type(XalsArmoireDB) == "table"
+        and XalsArmoireDB.favorites
+        and XalsArmoireDB.favorites[visualID] == true
+end
+
+function Data:SetFavorite(visualID, state)
+    if type(XalsArmoireDB) ~= "table" then return end
+    XalsArmoireDB.favorites = XalsArmoireDB.favorites or {}
+    if state then
+        XalsArmoireDB.favorites[visualID] = true
+    else
+        XalsArmoireDB.favorites[visualID] = nil
+    end
+end
+
+function Data:ToggleFavorite(visualID)
+    local now = not self:IsFavorite(visualID)
+    self:SetFavorite(visualID, now)
+    return now
+end
+
+-- Total still-needed count across every slot, ignoring whatever slot/zone
+-- filter the tracker window currently has set - what the minimap button and
+-- zone icon tooltips show at a glance, without opening the tracker.
+function Data:TotalRemainingCount()
+    return #self:GetTodoList(nil)
+end
+
+-- ── Vendor waypoints ─────────────────────────────────────────────
+-- VendorSources.lua only ever recorded a vendor's NAME, not their npcID, so
+-- this cross-references that name against XalsVendorLocations (keyed by
+-- npcID, from the shared D:\WoW_Addons\Dev\Assets\VendorLocations\ data) -
+-- a best-effort name match, not a guaranteed one. Built once, lazily.
+local vendorLocationByName
+
+-- A handful of names are confirmed (via real Wowhead fetches, 2026-09-28) to
+-- be two genuinely DIFFERENT NPCs at two different real locations, and our
+-- own VendorSources.lua entries for them already record which zone each one
+-- belongs to - so those get resolved by (name, zone) instead of name alone.
+-- "Moon Priestess Lasara" is a Renown Quartermaster in Emerald Dream (patch
+-- 10.2.0) AND a separate Quartermaster in Amirdrassil (patch 10.2.5) - two
+-- real vendors, not one vendor that moved. A third candidate npcID (50305)
+-- turned out to be an unrelated Stormwind NPC reusing the name and is
+-- correctly left out of both.
+local VENDOR_LOCATION_OVERRIDES = {
+    ["Moon Priestess Lasara"] = {
+        ["Emerald Dream"] = { mapID = 2200, x = 0.503, y = 0.616 },
+        ["Amirdrassil"]   = { mapID = 2239, x = 0.465, y = 0.706 },
+    },
+}
+
+-- Every name maps to a LIST of distinct real-world spots, not a single
+-- location - a name can legitimately belong to more than one vendor (see
+-- Raen Dawncavalyr below), and rather than dropping that vendor's waypoint
+-- entirely, every real candidate spot gets offered and the player picks
+-- whichever matches where they actually see the NPC standing.
+local function BuildVendorLocationIndex()
+    vendorLocationByName = {}
+    if type(XalsVendorLocations) ~= "table" then return end
+    for _, loc in pairs(XalsVendorLocations) do
+        local name = loc.name
+        if name and name ~= "" and not VENDOR_LOCATION_OVERRIDES[name] then
+            local list = vendorLocationByName[name]
+            if not list then
+                vendorLocationByName[name] = { loc }
+            else
+                -- A second npcID sharing this exact name is usually just a
+                -- Classic/phase/reskin variant standing in the SAME spot
+                -- (confirmed by checking several by hand) - only counts as
+                -- a genuinely separate spot if the coordinates disagree by
+                -- more than a rounding difference.
+                local isDuplicate = false
+                for i = 1, #list do
+                    local existing = list[i]
+                    local dx, dy = math.abs(existing.x - loc.x), math.abs(existing.y - loc.y)
+                    if existing.mapID == loc.mapID and dx <= 0.01 and dy <= 0.01 then
+                        isDuplicate = true
+                        break
+                    end
+                end
+                if not isDuplicate then
+                    list[#list + 1] = loc
+                end
+            end
+        end
+    end
+end
+
+-- Returns a LIST of {mapID, x, y, ...} candidate spots for a vendor's name -
+-- empty if we have nothing, one entry for the normal/confirmed case, or more
+-- than one for a name that genuinely belongs to more than one real vendor
+-- (Raen Dawncavalyr: two different specific spots inside Hallowfall, no way
+-- to tell which of our two recorded entries means which one). zoneHint
+-- (VendorSources.lua's own recorded `zone` string) resolves the rarer case
+-- where the ambiguity IS safely resolvable that way - see
+-- VENDOR_LOCATION_OVERRIDES above.
+function Data:VendorLocationFor(vendorName, zoneHint)
+    if not vendorName or vendorName == "" then return {} end
+
+    local override = VENDOR_LOCATION_OVERRIDES[vendorName]
+    if override then
+        local loc = zoneHint and override[zoneHint]
+        return loc and { loc } or {}
+    end
+
+    if not vendorLocationByName then BuildVendorLocationIndex() end
+    return vendorLocationByName[vendorName] or {}
+end
+
+-- ── Quest-giver waypoints ────────────────────────────────────────
+-- Same idea as vendor locations above, but there is no equivalent bulk
+-- community database for quest-givers the way VendorMap covers vendors -
+-- every entry in QuestGiverLocations.lua was fetched individually. A major
+-- named character who turns up in dozens of scattered quest hubs across an
+-- expansion's story is deliberately left OUT of that data entirely rather
+-- than guessing one spot for them, so an unmatched name here is often that,
+-- not a research gap.
+local questGiverLocationByName
+
+local function BuildQuestGiverLocationIndex()
+    questGiverLocationByName = {}
+    if type(XalsQuestGiverLocations) ~= "table" then return end
+    for _, loc in pairs(XalsQuestGiverLocations) do
+        local name = loc.name
+        if name and name ~= "" then
+            local list = questGiverLocationByName[name]
+            if not list then
+                questGiverLocationByName[name] = { loc }
+            else
+                local isDuplicate = false
+                for i = 1, #list do
+                    local existing = list[i]
+                    local dx, dy = math.abs(existing.x - loc.x), math.abs(existing.y - loc.y)
+                    if existing.mapID == loc.mapID and dx <= 0.01 and dy <= 0.01 then
+                        isDuplicate = true
+                        break
+                    end
+                end
+                if not isDuplicate then
+                    list[#list + 1] = loc
+                end
+            end
+        end
+    end
+end
+
+-- Returns a LIST of {mapID, x, y} candidate spots for a quest-giver's name -
+-- empty if we have nothing yet, one entry for the normal case, or more than
+-- one for a name genuinely tied to more than one real spot.
+function Data:QuestGiverLocationFor(giverName)
+    if not giverName or giverName == "" then return {} end
+    if not questGiverLocationByName then BuildQuestGiverLocationIndex() end
+    return questGiverLocationByName[giverName] or {}
+end
+
 -- ── The to-do list ───────────────────────────────────────────
 -- Every unique look this account does NOT own. slotFilter, when set, narrows
 -- it to one category - the slot filter control on the tracker.
@@ -1184,6 +1345,8 @@ function Data:GroupIntoSections(list, includeZones)
     return sections
 end
 
+local OTHER_BOSS = "Other drops"
+
 -- `list` is the FULL roster for the current slot filter (Data:GetAllList) -
 -- collected AND uncollected - not just what's missing. An instance only
 -- shows at all if it has at least one entry still missing somewhere in it.
@@ -1206,18 +1369,33 @@ function Data:GroupByInstance(list, wantKind)
 
     table.sort(names)
 
-    -- Flat: instance -> its items directly, no boss sub-tier. Which specific
-    -- boss drops something is one click away on the Wowhead link in the
-    -- popup - it doesn't need its own row in the tree.
+    -- Each section carries both the flat list of missing items (`entries`)
+    -- and the same items split by boss (`bosses`), with collected/total
+    -- counts for the instance and for every boss.
     local sections = {}
     for i = 1, #names do
         local place = names[i]
         local entries = buckets[place]
 
         local rows, missingCount = {}, 0
+        local bossBuckets, bossNames = {}, {}
         for e = 1, #entries do
             local entry = entries[e]
-            if not entry.isCollected then
+            local bossName = entry.placeBoss
+            if not bossName or bossName == "" then bossName = OTHER_BOSS end
+
+            local boss = bossBuckets[bossName]
+            if not boss then
+                boss = { name = bossName, entries = {}, total = 0, collected = 0 }
+                bossBuckets[bossName] = boss
+                bossNames[#bossNames + 1] = bossName
+            end
+            boss.total = boss.total + 1
+
+            if entry.isCollected then
+                boss.collected = boss.collected + 1
+            else
+                boss.entries[#boss.entries + 1] = entry
                 rows[#rows + 1] = entry
                 missingCount = missingCount + 1
             end
@@ -1225,12 +1403,50 @@ function Data:GroupByInstance(list, wantKind)
 
         -- Fully-collected instances don't belong on a to-do list at all.
         if missingCount > 0 then
+            table.sort(bossNames, function(a, b)
+                -- The catch-all group always goes last.
+                if (a == OTHER_BOSS) ~= (b == OTHER_BOSS) then return b == OTHER_BOSS end
+                return a < b
+            end)
+
+            -- A boss with nothing left to collect still gets a header ("5 of 5
+            -- collected") so the roster reads as complete rather than as if
+            -- that boss had no drops.
+            local bosses = {}
+            for b = 1, #bossNames do bosses[b] = bossBuckets[bossNames[b]] end
+
             sections[#sections + 1] = {
                 name = place, entries = rows, missingCount = missingCount,
+                totalCount = #entries, collectedCount = #entries - missingCount,
+                bosses = bosses,
             }
         end
     end
     return sections
+end
+
+-- ── Live item check ──────────────────────────────────────────────
+-- Asks the client directly, per item, rather than reading the cached to-do
+-- list: loot, vendor and quest windows hand over an item LINK, not one of
+-- our entries, and the answer has to stay right the instant something is
+-- collected. Returns:
+--   "missing"   - you don't own this look at all
+--   "shared"    - you own the look, just from a different item
+--   "collected" - you own this exact item's look
+--   nil         - not a transmog item, or the client can't say yet
+-- itemInfo can be an item link, ID, or name (C_TransmogCollection.GetItemInfo).
+function Data:ItemAppearanceStatus(itemInfo)
+    if not itemInfo or not C_TransmogCollection then return nil end
+
+    local _, sourceID = C_TransmogCollection.GetItemInfo(itemInfo)
+    if not sourceID then return nil end
+
+    local info = C_TransmogCollection.GetAppearanceInfoBySource(sourceID)
+    if not info then return nil end
+
+    if not info.appearanceIsCollected then return "missing" end
+    if info.sourceIsCollected then return "collected" end
+    return "shared"
 end
 
 -- ── Verification ─────────────────────────────────────────────
