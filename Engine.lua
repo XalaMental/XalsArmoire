@@ -37,6 +37,8 @@ function Engine:Init()
     -- if the player never opens the tracker window this session - kick it
     -- off here so the icon can actually appear on its own.
     addonTable.ZoneAlertIcon:Init()
+
+    addonTable.ItemMarkers:Init()
 end
 
 frame:RegisterEvent("PLAYER_LOGIN")
