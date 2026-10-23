@@ -11,6 +11,8 @@ std = "lua51"
 globals = {
     "XalsArmoireDB",
     "XalsArmoireCharDB",
+    "XalsVendorLocations", -- set by VendorLocations.lua, read by AppearanceData.lua
+    "XalsQuestGiverLocations", -- set by QuestGiverLocations.lua, read by AppearanceData.lua
     "StaticPopupDialogs", -- a real mutable table addons add popup entries to
     "SLASH_XALSARMOIRE1",
     "SlashCmdList",
@@ -18,6 +20,7 @@ globals = {
 
 -- Read-only: real WoW client API/globals.
 read_globals = {
+    "XalsKeep", -- Xal's Keep hub API, guarded with a nil-check before use
     "CreateFrame",
     "UIParent",
     "PixelUtil",
@@ -58,6 +61,23 @@ read_globals = {
     "wipe",
     "tinsert",
     "GameTooltip",
+    "TomTom", -- optional third-party addon, guarded with a nil-check before use
+    "C_Map",
+    "C_SuperTrack",
+    "UiMapPoint",
+    "LootFrame",
+    "ScrollUtil",
+    "MerchantFrame",
+    "QuestInfoFrame",
+    "TooltipDataProcessor",
+    "GetLootSlotLink",
+    "GetLootRollItemLink",
+    "GetQuestItemLink",
+    "GetQuestLogItemLink",
+    "MERCHANT_ITEMS_PER_PAGE",
+    "NUM_GROUP_LOOT_FRAMES",
+    "QuestInfo_Display",
+    "MerchantFrame_Update",
 }
 
 -- Textures/backdrop tables and long chained SetPoint calls read as "unused
