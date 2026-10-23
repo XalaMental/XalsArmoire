@@ -6,7 +6,7 @@
 -- entry in Blizzard's own AddOns list (secondary, so it's findable where
 -- people expect it).
 --
--- THREE toggles, deliberately. The whole reason this addon exists is that the
+-- FIVE toggles, deliberately. The whole reason this addon exists is that the
 -- alternatives bury you in checkboxes, so every option here has to earn its
 -- place by controlling behaviour that genuinely already exists. Nothing
 -- aspirational, nothing that needs a feature building first.
@@ -21,7 +21,7 @@ local SettingsPanel = addonTable.SettingsPanel
 local Brand         = addonTable.BrandStyle
 
 local PANEL_NAME = "Xal's Armoire"
-local WIN_W, WIN_H = 430, 430
+local WIN_W, WIN_H = 430, 570
 
 local PANEL_LABEL_FONT_SIZE = 14
 local PANEL_DESC_FONT_SIZE  = 13
@@ -107,11 +107,11 @@ local function BuildWindow()
     end
 
     Brand.ApplyBackground(f)
-    Brand.DrawBorder(f)
+    Brand.DrawBorder(f, 1)
 
     Brand.Title(f, "Xal's Armoire", 24, "TOP", f, "TOP", 0, -Brand.SAFE_MARGIN - 6)
 
-    local discord = Brand.MakeDiscordLink(f)
+    local discord = Brand.MakeDiscordLogoLink(f, 110)
     discord:SetPoint("TOPRIGHT", f, "TOPRIGHT", -Brand.SAFE_MARGIN, -Brand.SAFE_MARGIN)
 
     Brand.DrawDivider(f, 0, 66, WIN_W - (Brand.SAFE_MARGIN * 2))
@@ -135,8 +135,8 @@ local function BuildWindow()
             SettingsPanel:Set("announceCollected", self:GetChecked())
         end)
 
-    -- 3. Section collapse. Last row, so its return value isn't anchored to.
-    AddToggle(f, last, -18,
+    -- 3. Section collapse.
+    last = AddToggle(f, last, -18,
         "Start Raids and Dungeons collapsed",
         "Opens those two tabs as a short list of instance names rather than every "
             .. "row at once. Sections you open by hand are remembered either way.",
@@ -144,6 +144,26 @@ local function BuildWindow()
         function(self)
             SettingsPanel:Set("collapseByDefault", self:GetChecked())
             if addonTable.MainTracker:IsShown() then addonTable.MainTracker:Refresh() end
+        end)
+
+    -- 4. Missing-appearance markers on loot, vendor and quest windows.
+    last = AddToggle(f, last, -18,
+        "Mark missing appearances on items",
+        "Puts a small wardrobe icon on loot, group-loot rolls, vendor items and "
+            .. "quest rewards you don't have the look for yet.",
+        SettingsPanel:Get("markItems"),
+        function(self)
+            SettingsPanel:Set("markItems", self:GetChecked())
+        end)
+
+    -- 5. Tooltip line. Last row, so its return value isn't anchored to.
+    AddToggle(f, last, -18,
+        "Add a line to item tooltips",
+        "Says whether you're missing an item's appearance, or already have the "
+            .. "look from a different item.",
+        SettingsPanel:Get("tooltipLine"),
+        function(self)
+            SettingsPanel:Set("tooltipLine", self:GetChecked())
         end)
 
     local close = Brand.MakeCloseButton(f, function() f:Hide() end)
@@ -163,7 +183,7 @@ local function BuildCanvasPanel()
     panel.name = PANEL_NAME
 
     local title = Brand.FS(panel, PANEL_NAME, Brand.TITLE_FONT_PATH, 22, nil,
-        Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
+        Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
     title:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -16)
 
     local blurb = Brand.FS(panel, "A transmog tracker that shows every unique appearance "
