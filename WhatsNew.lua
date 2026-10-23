@@ -27,20 +27,21 @@ local Brand = addonTable.BrandStyle
 -- ── Update this block every release to match CHANGELOG.md ──────
 -- (no "version" field here on purpose - see note above)
 W.WHATS_NEW = {
-    date = "August 20, 2026",
-    intro = "A transmog tracker that shows every unique appearance you're still missing, and where it actually comes from.",
+    date = "October 23, 2026",
+    intro = "Armoire now takes you to the thing you're missing, and flags it right where you're deciding about it.",
     sections = {
         { heading = "New", items = {
-            "The tracker - every unique look you don't own yet, and it shrinks as you collect.",
-            "Looks, not duplicates: a helmet on a dozen items counts once.",
-            "Click any look to see every item that gives it, and where each one comes from.",
-            "Quest names, vendors and prices, recipes, bosses and difficulties.",
-            "All / Raids / Dungeons tabs, a this-zone filter and a slot filter.",
-            "Your collection in its own window, kept apart from the to-do list.",
+            "Set Waypoint buttons on vendors and quest-givers - a pin on your map, or in TomTom if you use it.",
+            "A small wardrobe icon on missing looks in your loot, group-loot rolls, vendor windows and quest rewards, plus a line on item tooltips.",
+            "The \"where it comes from\" window shows each source as its own card.",
+            "A Zone tab, and a count badge on the zone icon.",
+            "Raids and Dungeons list drops by boss, with \"N of M collected\" on every header.",
+            "Favorites (right-click a row) and a \"Vendor items first\" sort.",
+            "Works with Xal's Keep.",
         } },
         { heading = "Good to know", items = {
-            "Quests, vendors and recipes are written up for Midnight, The War Within and Dragonflight.",
-            "Older looks still show where they come from, they just don't name the quest or vendor yet.",
+            "Quests, vendors, recipes and achievements are now written up for every expansion, Classic through Midnight.",
+            "The two new item options are in Armoire's settings, and both are on by default.",
         } },
     },
 }
@@ -100,14 +101,14 @@ local function BuildFrame(installedVersion)
     end
 
     Brand.ApplyBackground(f)
-    Brand.DrawBorder(f)
+    Brand.DrawBorder(f, 1)
 
     local data = W.WHATS_NEW
     Brand.Title(f, "What's New", 26, "TOP", f, "TOP", 0, -24)
 
     -- Standing Discord link, top-right - present on every version's splash,
     -- not tied to that release's content (see the Discord link standard).
-    local discord = Brand.MakeDiscordLink(f)
+    local discord = Brand.MakeDiscordLogoLink(f, 110)
     discord:SetPoint("TOPRIGHT", f, "TOPRIGHT", -Brand.SAFE_MARGIN, -Brand.SAFE_MARGIN)
 
     -- "installedVersion" is the REAL live version (from CheckAndShow), not a
@@ -145,7 +146,7 @@ local function BuildFrame(installedVersion)
 
     for _, section in ipairs(data.sections or {}) do
         local head = Brand.FS(f, section.heading, Brand.BODY_FONT_PATH, 13, "OUTLINE",
-            Brand.ACCENT[1], Brand.ACCENT[2], Brand.ACCENT[3])
+            Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
         head:SetPoint("TOPLEFT", f, "TOPLEFT", 30, -y)
         y = y + 22
 
