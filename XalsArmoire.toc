@@ -25,6 +25,7 @@ ProfessionSources.lua
 AchievementSources.lua
 InstanceDropSources.lua
 WorldDropSources.lua
+DelveSources.lua
 SharedLooks.lua
 AppearanceData.lua
 WhatsNew.lua
