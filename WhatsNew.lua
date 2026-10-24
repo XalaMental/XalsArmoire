@@ -120,44 +120,43 @@ local function BuildFrame(installedVersion)
 
     Brand.DrawDivider(f, 30, 78, FW - 60)
 
-    -- Wrapped text MUST have its width set before its text, or the string is
-    -- measured as a single unwrapped line and GetStringHeight comes back one
-    -- line short. Every two-line bullet then advances half as far as it needs
-    -- to and the whole splash stacks on top of itself. Brand.FS sets the text
-    -- for you, so wrapped strings are built empty here and filled in after
-    -- the width and word-wrap are in place.
-    local function WrappedFS(parent, text, width, indent, size, flags, r, g, b)
-        local fs = Brand.FS(parent, "", Brand.BODY_FONT_PATH, size, flags, r, g, b)
+    -- No GetStringHeight() math: it comes back a line short before the first
+    -- draw, so every wrapped bullet advanced too little and the whole splash
+    -- stacked on top of itself. Each element anchors its TOPLEFT to the
+    -- PREVIOUS element's real BOTTOMLEFT instead, so the game's own layout
+    -- places every line under the true wrapped height (same fix as Keep,
+    -- Roster Roundup and Common Tongue).
+    local function WrappedFS(text, width, size, r, g, b)
+        local fs = Brand.FS(f, "", Brand.BODY_FONT_PATH, size, "", r, g, b)
         fs:SetWidth(width)
         fs:SetJustifyH("LEFT")
         fs:SetWordWrap(true)
-        fs:SetPoint("TOPLEFT", parent, "TOPLEFT", indent, 0) -- real Y set by caller
         fs:SetText(text)
         return fs
     end
 
-    local y = 92
+    local prev, prevIndent = nil, 30
+    local function place(elem, indent, gap)
+        if prev then
+            elem:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", indent - prevIndent, -gap)
+        else
+            elem:SetPoint("TOPLEFT", f, "TOPLEFT", indent, -92)
+        end
+        prev, prevIndent = elem, indent
+    end
+
     if data.intro and data.intro ~= "" then
-        local intro = WrappedFS(f, data.intro, FW - 60, 30, 12, "", 0.85, 0.85, 0.85)
-        intro:ClearAllPoints()
-        intro:SetPoint("TOPLEFT", f, "TOPLEFT", 30, -y)
-        y = y + math.max(intro:GetStringHeight() or 0, 14) + 14
+        place(WrappedFS(data.intro, FW - 60, 12, 0.85, 0.85, 0.85), 30, 0)
     end
 
     for _, section in ipairs(data.sections or {}) do
         local head = Brand.FS(f, section.heading, Brand.BODY_FONT_PATH, 13, "OUTLINE",
             Brand.HEADER_COLOR[1], Brand.HEADER_COLOR[2], Brand.HEADER_COLOR[3])
-        head:SetPoint("TOPLEFT", f, "TOPLEFT", 30, -y)
-        y = y + 22
+        place(head, 30, 16)
 
         for _, item in ipairs(section.items or {}) do
-            local bullet = WrappedFS(f, "-  " .. item, FW - 76, 36, 12, "",
-                Brand.GOLD[1], Brand.GOLD[2], Brand.GOLD[3])
-            bullet:ClearAllPoints()
-            bullet:SetPoint("TOPLEFT", f, "TOPLEFT", 36, -y)
-            y = y + math.max(bullet:GetStringHeight() or 0, 14) + 6
+            place(WrappedFS("-  " .. item, FW - 76, 12, Brand.GOLD[1], Brand.GOLD[2], Brand.GOLD[3]), 36, 8)
         end
-        y = y + 12
     end
 
     local closeBtn = Brand.MakeButton(f, "Got it", 110, 28, function()
@@ -165,13 +164,19 @@ local function BuildFrame(installedVersion)
     end)
     closeBtn:SetPoint("BOTTOM", f, "BOTTOM", 0, 18)
 
-    -- Size the frame to its ACTUAL content (y = how far the layout got, plus
-    -- room for the close button + bottom padding) instead of a guessed fixed
-    -- height - a longer release's content would otherwise clip or overlap
-    -- the button. BOTTOM-anchored elements (the button, the border/background,
-    -- both resize-safe) re-settle automatically once the frame's real size
-    -- is set.
-    f:SetHeight(math.min(y + 56, MAX_FH))
+    -- Relative anchors only resolve to real screen positions after the first
+    -- draw - measure one frame after Show() and size the frame from the last
+    -- element's TRUE bottom.
+    local function FitHeight()
+        local top = f:GetTop()
+        local lastBottom = prev and prev:GetBottom()
+        if top and lastBottom then
+            f:SetHeight(math.min(math.max((top - lastBottom) + 64, 180), MAX_FH))
+        end
+    end
+    f:SetScript("OnShow", function()
+        C_Timer.After(0, FitHeight)
+    end)
 
     return f
 end
