@@ -397,6 +397,31 @@ function Detail:Show(entry)
         end
     end
 
+    -- Delves. Read for every item regardless of source type - the game has no
+    -- "delve" source type, so these can arrive labelled as almost anything.
+    for i = 1, #details do
+        local dv = details[i].itemID and addonTable.DelveSources
+            and addonTable.DelveSources[details[i].itemID]
+        if dv then
+            local line
+            if dv.title then
+                line = "Sold by |cffffffff" .. dv.title .. "|r"
+            else
+                line = "Delve  |cff999999-|r  |cffffffff" .. dv.delve .. "|r"
+            end
+            if dv.where and dv.where ~= "" then
+                line = line .. "\n   |cff999999" .. dv.where .. "|r"
+            end
+            if dv.requires and dv.requires ~= "" then
+                line = line .. "\n   |cff999999Requires " .. dv.requires .. "|r"
+            end
+            if dv.entrance and dv.entrance ~= "" then
+                line = line .. "\n   |cff999999" .. dv.entrance .. "|r"
+            end
+            Add(line, dv.waypoint)
+        end
+    end
+
     for i = 1, #details do
         for k = 1, #details[i].drops do
             local drop = details[i].drops[k]
