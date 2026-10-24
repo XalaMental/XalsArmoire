@@ -1,5 +1,24 @@
 # Xal's Armoire - Changelog
 
+## 1.5.2 - October 24, 2026
+
+---
+
+The Labyrinth of Kindo'jan came out with the new patch, and it was exactly the kind of gap Armoire is supposed to close: its looks were in your list, but nothing said where they came from. So this update adds them, along with what Zah'ran sells at the end of a delve, and there's a Set Waypoint straight to the Labyrinth's entrance. I also made the tracker open on the dungeon or raid you're standing in, since that's usually the moment you want it. And I fixed two things I broke in 1.5.0: the Raids and Dungeons tabs could throw an error and keep showing the old list, and the What's New window didn't grow to fit its text.
+
+Thanks for being part of the Xal family.
+
+### 🆕 New
+
+- **Delve looks** - the Labyrinth of Kindo'jan's chests and Loa-sealed rooms, and the armor and weapons Zah'ran sells at the end of a delve, now show where they come from.
+- **Set Waypoint to the Labyrinth** - puts a pin on your map (or a TomTom arrow, if you use it) at its entrance in Eversong Woods.
+- **Opens on the instance you're in** - open the tracker inside a raid or dungeon and it jumps to the Raids or Dungeons tab, with that instance at the top and opened up.
+
+### 🔧 Fixed
+
+- **Raids and Dungeons tabs** - they could error when a section was collapsed, and keep showing the old list until you scrolled.
+- **The What's New window** - it now grows to fit all of its text instead of letting the bottom hang out.
+
 ## 1.5.1 - October 24, 2026
 
 ---
