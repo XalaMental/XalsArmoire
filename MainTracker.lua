@@ -32,6 +32,7 @@ local typedText = ""
 local quickWinsFirst = false
 local activeTab = "all"       -- "zone" | "all" | "raids" | "dungeons"
 local slotFilter = nil        -- nil = every slot
+local autoOpenedFor = nil     -- instance already auto-opened since the window was last opened
 local tabButtons = {}
 
 local function UpdateTabLook()
@@ -41,6 +42,31 @@ local function UpdateTabLook()
         else
             btn.label:SetTextColor(Brand.SIDEBAR_UNSELECTED[1], Brand.SIDEBAR_UNSELECTED[2], Brand.SIDEBAR_UNSELECTED[3], 1)
         end
+    end
+end
+
+-- Runs each time the window is opened. Resets the once-per-open auto-expand
+-- of the instance you're standing in, and - when you ARE inside a raid or
+-- dungeon - jumps to the matching Raids/Dungeons tab so it's right there.
+-- The tab is only changed in memory, not saved, so your own preferred tab
+-- is still what comes back next session. The zone icon's "open on the Zone
+-- tab" path turns this off for that one open (skipAutoTab).
+local skipAutoTab = false
+
+local function ApplyOpenBehavior()
+    autoOpenedFor = nil
+    if skipAutoTab then
+        skipAutoTab = false
+        return
+    end
+
+    local _, instanceType = Data:CurrentInstanceName()
+    local tab = (instanceType == "raid" and "raids")
+        or (instanceType == "party" and "dungeons")
+        or nil
+    if tab and activeTab ~= tab then
+        activeTab = tab
+        UpdateTabLook()
     end
 end
 
@@ -240,6 +266,27 @@ local function BuildDisplayList(todo)
         sections = Data:GroupByInstance(all, "dungeon")
     end
 
+    -- Standing inside one of these instances: it goes to the top of the list
+    -- and is opened up, once per time the window is opened (so collapsing it
+    -- by hand afterwards sticks until the window is next opened).
+    local hereName = Data:CurrentInstanceName()
+    if hereName then
+        hereName = hereName:lower()
+        for i = 1, #sections do
+            if sections[i].name:lower() == hereName then
+                local here = table.remove(sections, i)
+                table.insert(sections, 1, here)
+                if autoOpenedFor ~= hereName then
+                    autoOpenedFor = hereName
+                    SetCollapsed(here.name, false)
+                end
+                break
+            end
+        end
+    else
+        autoOpenedFor = nil
+    end
+
     -- Instance -> boss -> items. Every header carries "N of M collected" so
     -- progress is readable without opening anything.
     local display = {}
@@ -249,6 +296,7 @@ local function BuildDisplayList(todo)
         display[#display + 1] = {
             sectionName = section.name,
             count = section.collectedCount .. " of " .. section.totalCount .. " collected",
+            missing = section.missingCount,
             collapsed = collapsed,
             depth = 0,
         }
@@ -261,6 +309,7 @@ local function BuildDisplayList(todo)
                     sectionName = boss.name,
                     sectionKey = bossKey,
                     count = boss.collected .. " of " .. boss.total .. " collected",
+                    missing = #boss.entries,
                     collapsed = bossCollapsed,
                     isBoss = true,
                     depth = 1,
@@ -431,7 +480,7 @@ function Tracker:Refresh()
         if item.entry then
             shown = shown + 1
         elseif item.sectionName and item.collapsed then
-            shown = shown + (item.count or 0)
+            shown = shown + (item.missing or 0)
         end
     end
 
@@ -785,6 +834,7 @@ local function BuildWindow()
     -- measurement is least trustworthy. Re-measure whenever it is actually
     -- shown, and redraw against the real size.
     f:SetScript("OnShow", function()
+        ApplyOpenBehavior()
         local w = scrollFrame:GetWidth()
         if w and w > 0 then scrollChild:SetWidth(w) end
         scrollFrame:SetVerticalScroll(0)
@@ -872,6 +922,9 @@ local function AttachToKeep(container)
 end
 
 local function ShowInKeep()
+    -- Inside the Keep the window stays "shown" while the Keep is closed, so
+    -- its own OnShow doesn't fire on each open - do the same work here.
+    ApplyOpenBehavior()
     Tracker:Refresh()
     frame:Show()
     StartResolving()
@@ -944,8 +997,14 @@ function Tracker:ShowZoneOnly()
         if type(XalsArmoireDB) == "table" then XalsArmoireDB.activeTab = "zone" end
         UpdateTabLook()
     end
-    if XalsKeep then return XalsKeep:Show(KEEP_KEY) end
+    skipAutoTab = true
+    if XalsKeep then
+        XalsKeep:Show(KEEP_KEY)
+        skipAutoTab = false
+        return
+    end
     self:Refresh()
     f:Show()
     StartResolving()
+    skipAutoTab = false
 end
