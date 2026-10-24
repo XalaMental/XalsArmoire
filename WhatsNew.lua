@@ -27,21 +27,16 @@ local Brand = addonTable.BrandStyle
 -- ── Update this block every release to match CHANGELOG.md ──────
 -- (no "version" field here on purpose - see note above)
 W.WHATS_NEW = {
-    date = "October 23, 2026",
-    intro = "Armoire now takes you to the thing you're missing, and flags it right where you're deciding about it.",
+    date = "October 24, 2026",
+    intro = "Delve looks now say where they come from, and the tracker jumps to the dungeon or raid you're standing in.",
     sections = {
         { heading = "New", items = {
-            "Set Waypoint buttons on vendors and quest-givers - a pin on your map, or in TomTom if you use it.",
-            "A small wardrobe icon on missing looks in your loot, group-loot rolls, vendor windows and quest rewards, plus a line on item tooltips.",
-            "The \"where it comes from\" window shows each source as its own card.",
-            "A Zone tab, and a count badge on the zone icon.",
-            "Raids and Dungeons list drops by boss, with \"N of M collected\" on every header.",
-            "Favorites (right-click a row) and a \"Vendor items first\" sort.",
-            "Works with Xal's Keep.",
+            "Looks from the Labyrinth of Kindo'jan, and from Zah'ran, the vendor at the end of a delve, now show where they come from. The Labyrinth ones have a Set Waypoint to its entrance.",
+            "Open the tracker inside a raid or dungeon and it jumps to that instance, at the top and opened up.",
         } },
-        { heading = "Good to know", items = {
-            "Quests, vendors, recipes and achievements are now written up for every expansion, Classic through Midnight.",
-            "The two new item options are in Armoire's settings, and both are on by default.",
+        { heading = "Fixed", items = {
+            "The Raids and Dungeons tabs could error and keep showing the old list until you scrolled.",
+            "The What's New window now grows to fit all of its text.",
         } },
     },
 }
@@ -164,18 +159,28 @@ local function BuildFrame(installedVersion)
     end)
     closeBtn:SetPoint("BOTTOM", f, "BOTTOM", 0, 18)
 
-    -- Relative anchors only resolve to real screen positions after the first
-    -- draw - measure one frame after Show() and size the frame from the last
-    -- element's TRUE bottom.
+    -- Relative anchors only resolve to real screen positions after the game
+    -- has drawn them, and one measurement a frame after Show() proved too
+    -- early - the window stayed at its placeholder height and the bottom of
+    -- the list hung out of it. So re-fit every frame for the first stretch
+    -- after opening; the gap between the frame's top and the last element's
+    -- true bottom doesn't depend on the frame's own height, so this settles
+    -- instead of chasing itself.
+    local fitFrames = 0
     local function FitHeight()
         local top = f:GetTop()
         local lastBottom = prev and prev:GetBottom()
         if top and lastBottom then
-            f:SetHeight(math.min(math.max((top - lastBottom) + 64, 180), MAX_FH))
+            local h = math.min(math.max((top - lastBottom) + 64, 180), MAX_FH)
+            if math.abs((f:GetHeight() or 0) - h) > 0.5 then f:SetHeight(h) end
         end
     end
-    f:SetScript("OnShow", function()
-        C_Timer.After(0, FitHeight)
+    f:SetScript("OnShow", function() fitFrames = 0 end)
+    f:SetScript("OnUpdate", function()
+        if fitFrames < 30 then
+            fitFrames = fitFrames + 1
+            FitHeight()
+        end
     end)
 
     return f
