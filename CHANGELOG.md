@@ -1,5 +1,15 @@
 # Xal's Armoire - Changelog
 
+## 1.5.1 - October 24, 2026
+
+---
+
+Right after 1.5.0 went out, I opened the new What's New window in game and the text was piled on top of itself, so you couldn't actually read any of it. That's fixed now: every line sits where it should, and the window sizes itself to fit. Nothing else changed. Thanks for being part of the Xal family.
+
+### 🔧 Fixed
+
+- **The What's New window** - the text no longer stacks on top of itself.
+
 ## 1.5.0 - October 23, 2026
 
 ---
