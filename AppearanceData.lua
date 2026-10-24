@@ -924,6 +924,16 @@ function Data:GetInstanceKind(entry)
 end
 
 -- ── Current zone ─────────────────────────────────────────────
+-- The dungeon or raid you're standing inside right now, by name, or nil out
+-- in the open world.
+function Data:CurrentInstanceName()
+    local name, instanceType = GetInstanceInfo()
+    if instanceType and instanceType ~= "none" and name and name ~= "" then
+        return name, instanceType
+    end
+    return nil
+end
+
 function Data:CurrentZoneNames()
     local names = {}
     local function add(v)
@@ -988,6 +998,14 @@ function Data:PlacesFor(entry)
         if q then
             add(q.start)
             add(q.note)
+        end
+
+        -- Delve-only looks: the delve's own name, so the Zone tab matches
+        -- while you're standing inside it.
+        local dv = addonTable.DelveSources and addonTable.DelveSources[itemID]
+        if dv then
+            add(dv.delve)
+            for i = 1, #(dv.places or {}) do add(dv.places[i]) end
         end
     end
 
